@@ -1,0 +1,2470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThumbCraft — YouTube Thumbnail Maker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f14;
+    --surface: #16181f;
+    --surface2: #1e2029;
+    --surface3: #252836;
+    --border: #2a2d3a;
+    --border2: #363a4d;
+    --accent: #f5c518;
+    --accent2: #e84393;
+    --accent-dim: rgba(245,197,24,0.12);
+    --text: #e8eaf0;
+    --text2: #b0b4c8;
+    --muted: #6b6f82;
+    --danger: #ff4757;
+    --success: #2ed573;
+    --info: #3d8bff;
+    --panel-w: 288px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    height: 50px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 2px; color: var(--accent); margin-right: 4px; flex-shrink: 0; }
+  .logo span { color: var(--accent2); }
+  .topbar-sep { width: 1px; height: 26px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+  .topbar-right { margin-left: auto; display: flex; gap: 7px; align-items: center; }
+  .canvas-size-badge { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); background: var(--surface2); padding: 3px 7px; border-radius: 4px; border: 1px solid var(--border); }
+
+  /* ── BUTTONS ── */
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 500; transition: all .15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-ghost:active { background: var(--surface3); }
+  .btn-primary { background: var(--accent); color: #000; font-weight: 700; }
+  .btn-primary:hover { background: #ffd740; }
+  .btn-primary:active { background: #e5b710; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 4px 9px; font-size: 11.5px; }
+  .btn-icon { padding: 6px; border-radius: 6px; }
+  .btn[disabled] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+  /* ── UNDO/REDO ── */
+  .undo-redo { display: flex; gap: 2px; }
+  .undo-redo .btn { padding: 5px 9px; font-size: 15px; line-height: 1; }
+
+  /* ── WORKSPACE ── */
+  .workspace { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── LEFT PANEL ── */
+  .left-panel { width: var(--panel-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .panel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .panel-tab { flex: 1; padding: 9px 4px; text-align: center; font-size: 10.5px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; user-select: none; }
+  .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(245,197,24,.03); }
+  .panel-tab:hover:not(.active) { color: var(--text2); background: var(--surface2); }
+  .panel-body { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .panel-section { margin-bottom: 18px; }
+  .panel-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── ADD GRID ── */
+  .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .add-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text2); font-size: 11.5px; font-weight: 500; transition: all .15s; user-select: none; }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .add-btn:active { transform: scale(0.96); }
+  .add-btn svg { width: 18px; height: 18px; }
+
+  /* ── LAYERS ── */
+  .layers-list { display: flex; flex-direction: column; gap: 3px; }
+  .layer-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all .12s; font-size: 11.5px; user-select: none; }
+  .layer-item:hover { border-color: var(--border2); background: var(--surface3); }
+  .layer-item.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .layer-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+  .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+  .layer-name-edit { flex: 1; background: transparent; border: none; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 11.5px; outline: none; border-bottom: 1px solid var(--accent); padding: 0; }
+  .layer-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .layer-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; border-radius: 3px; font-size: 11px; background: transparent; border: none; transition: color .1s; }
+  .layer-btn:hover { color: var(--text); background: var(--surface); }
+  .layer-btn.danger:hover { color: var(--danger); }
+  .layer-btn.accent:hover { color: var(--accent); }
+
+  /* ── PRESETS ── */
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .preset-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: all .15s; position: relative; }
+  .preset-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  .preset-thumb { width: 100%; aspect-ratio: 16/9; background: #222; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+  .preset-name { padding: 5px 7px; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preset-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .preset-card:hover .preset-overlay { display: flex; }
+  .preset-del-btn { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; background: rgba(0,0,0,.8); border-radius: 4px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; color: var(--danger); font-size: 12px; transition: background .1s; }
+  .preset-del-btn:hover { background: var(--danger); color: #fff; }
+  .preset-card:hover .preset-del-btn { display: flex; }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel { width: var(--panel-w); background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .props-body { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+  /* ── INPUTS ── */
+  .prop-row { margin-bottom: 11px; }
+  .prop-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; }
+  .prop-input, .prop-select, .prop-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 9px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 12.5px; transition: border-color .15s;
+  }
+  .prop-input:focus, .prop-select:focus, .prop-textarea:focus { outline: none; border-color: var(--accent); }
+  .prop-input:disabled { opacity: 0.4; }
+  .prop-select option { background: var(--surface2); }
+  .prop-textarea { resize: vertical; min-height: 56px; }
+  .prop-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .prop-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .prop-color-row { display: flex; gap: 7px; align-items: center; }
+  .prop-color { width: 34px; height: 30px; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; padding: 2px; background: var(--surface2); flex-shrink: 0; }
+  .prop-slider { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  .slider-val { font-family: 'Space Mono', monospace; font-size: 10.5px; color: var(--muted); min-width: 36px; text-align: right; flex-shrink: 0; }
+  .no-selection { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); font-size: 12.5px; text-align: center; padding: 20px; gap: 8px; }
+  .no-selection svg { width: 36px; height: 36px; opacity: .25; }
+  .shortcut-hint { font-size: 10px; color: var(--muted); opacity: .7; margin-top: 3px; }
+
+  /* ── ALIGN TOOLS ── */
+  .align-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 11px; }
+  .align-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 6px 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all .12s; }
+  .align-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .align-btn svg { width: 14px; height: 14px; }
+
+  /* ── CANVAS AREA ── */
+  .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #080910; background-image: radial-gradient(circle, #1e2029 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; position: relative; cursor: default; }
+  .canvas-wrapper { position: absolute; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 24px 80px rgba(0,0,0,.7); }
+  #mainCanvas { display: block; cursor: default; }
+
+  /* ── ZOOM BAR ── */
+  .zoom-bar { position: absolute; bottom: 14px; right: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 2px; padding: 3px; z-index: 10; }
+  .zoom-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--muted); cursor: pointer; border-radius: 4px; font-size: 14px; transition: all .1s; }
+  .zoom-btn:hover { background: var(--surface2); color: var(--text); }
+  .zoom-val { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text); padding: 0 6px; min-width: 42px; text-align: center; cursor: pointer; }
+
+  /* ── SNAP INDICATOR ── */
+  .snap-indicator { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 12px; font-size: 11px; color: var(--accent); display: none; z-index: 20; pointer-events: none; }
+  .snap-indicator.show { display: block; }
+
+  /* ── MODALS ── */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(6px); }
+  .modal-bg.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 22px; width: 400px; max-width: 94vw; box-shadow: 0 32px 80px rgba(0,0,0,.7); }
+  .modal h3 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--accent); margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  /* ── CONFIRM DIALOG ── */
+  .confirm-dialog { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 24px; width: 340px; max-width: 94vw; box-shadow: 0 32px 80px rgba(0,0,0,.8); }
+  .confirm-dialog h4 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .confirm-dialog p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── PRESET HOVER PREVIEW ── */
+  .preset-preview-badge { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  .preset-card:hover .preset-preview-badge { opacity: 1; }
+  .pv-load { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: .4px; text-transform: uppercase; }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 18px; font-size: 12.5px; z-index: 2000; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  .toast.info { border-color: var(--info); color: var(--info); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
+
+  /* ── STATUS DOT ── */
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.ok { background: var(--success); }
+  .status-dot.err { background: var(--danger); }
+
+  /* ── TAB CONTENT ── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  #right-tab-props.active, #right-tab-bg.active, #right-tab-github-right.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  /* ── IMPORT/EXPORT BAR ── */
+  .import-export-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+
+  /* ── BG SECTION ── */
+  .bg-image-chip { background: var(--surface2); border: 1px solid var(--success); border-radius: 6px; padding: 6px 10px; font-size: 11.5px; color: var(--success); display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+
+  small { font-size: 10.5px; color: var(--muted); }
+
+  /* ── ALIGN SECTION SEPARATOR ── */
+  .props-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 14px 0 7px; opacity: .7; }
+
+  /* ── KEYBOARD HINTS ── */
+  .kb-hint { display: inline-block; background: var(--surface3); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-family: 'Space Mono', monospace; font-size: 9.5px; color: var(--muted); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 700px) {
+    body { height: 100dvh; }
+    .topbar { padding: 0 10px; gap: 5px; height: 46px; }
+    .topbar-sep, .canvas-size-badge, .undo-redo, .topbar .btn-ghost:not(.mobile-show) { display: none; }
+    .btn-primary { padding: 6px 11px; font-size: 12px; }
+    .workspace { flex-direction: column; }
+    .left-panel, .right-panel { display: none; }
+    .canvas-area { flex: 1; min-height: 0; }
+    .mobile-actions { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 5px 10px; gap: 5px; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+    .mobile-actions::-webkit-scrollbar { display: none; }
+    .mobile-actions .btn { white-space: nowrap; font-size: 11.5px; padding: 5px 11px; flex-shrink: 0; }
+    .mobile-nav { display: flex; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; z-index: 200; }
+    .mobile-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 7px 4px; gap: 3px; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); cursor: pointer; border: none; background: transparent; transition: color .15s; user-select: none; border-top: 2px solid transparent; }
+    .mobile-nav-btn.active { color: var(--accent); border-top-color: var(--accent); }
+    .mobile-nav-btn svg { width: 18px; height: 18px; }
+    .mobile-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--border); border-radius: 16px 16px 0 0; z-index: 300; max-height: 72dvh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform .3s cubic-bezier(.32,1,.32,1); }
+    .mobile-drawer.open { transform: translateY(0); }
+    .drawer-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 10px auto 0; flex-shrink: 0; cursor: pointer; }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); flex-shrink: 0; border-bottom: 1px solid var(--border); }
+    .drawer-close { width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 13px; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 12px 12px 32px; scrollbar-width: thin; }
+    .drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 299; }
+    .drawer-backdrop.open { display: block; }
+    .zoom-bar { bottom: 8px; right: 8px; }
+  }
+  @media (min-width: 701px) {
+    .mobile-nav, .mobile-drawer, .drawer-backdrop, .mobile-actions { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Thumb<span>Craft</span></div>
+  <div class="topbar-sep"></div>
+  <!-- Undo / Redo -->
+  <div class="undo-redo">
+    <button class="btn btn-ghost btn-icon" id="undo-btn" onclick="undo()" title="Undo (Ctrl+Z)" disabled>
+      <svg viewBox="0 0 16 16" width="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7H11a3 3 0 010 6H8"/><path d="M5 4.5L2.5 7 5 9.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-icon" id="redo-btn" onclick="redo()" title="Redo (Ctrl+Y)" disabled>
+      <svg viewBox="0 0 16 16" width="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 7H5a3 3 0 000 6h3"/><path d="M11 4.5L13.5 7 11 9.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="topbar-sep"></div>
+  <button class="btn btn-ghost" onclick="confirmNewCanvas()">
+    <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M8 5v6M5 8h6"/></svg>New
+  </button>
+  <button class="btn btn-ghost" onclick="triggerBgUpload()">
+    <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M1 11l4-3 3 3 2-2 5 4"/></svg>BG
+  </button>
+  <div class="topbar-sep"></div>
+  <span class="canvas-size-badge">1280 × 720</span>
+  <div class="topbar-right">
+    <button class="btn btn-ghost btn-sm" onclick="savePresetModal()">
+      <svg viewBox="0 0 14 14" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h8l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1V2z"/><rect x="4" y="8" width="6" height="4"/><rect x="4" y="2" width="4" height="3"/></svg>Save Preset
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="exportPresets()">
+      <svg viewBox="0 0 14 14" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v7m-3-3l3 3 3-3"/><path d="M2 10v2h10v-2"/></svg>Export
+    </button>
+    <button class="btn btn-primary" onclick="exportCanvas()">
+      <svg viewBox="0 0 14 14" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="12" height="12" rx="1.5"/><circle cx="4.5" cy="5" r="1.2"/><path d="M1 9l4-3.5 3 3 2-2 4 4"/></svg>Export PNG
+    </button>
+  </div>
+</div>
+
+<div class="workspace">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+    <div class="panel-tabs" id="left-panel-tabs">
+      <div class="panel-tab active" onclick="switchTab('add')" title="Add elements">Add</div>
+      <div class="panel-tab" onclick="switchTab('layers')" title="Layer stack">Layers</div>
+      <div class="panel-tab" onclick="switchTab('presets')" title="Saved presets">Presets</div>
+      <div class="panel-tab" onclick="switchTab('github')" title="GitHub sync">GitHub</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- ADD TAB -->
+      <div class="tab-content active" id="tab-add">
+        <div class="panel-section">
+          <div class="panel-label">Shapes &amp; Media</div>
+          <div class="add-grid">
+            <div class="add-btn" onclick="addText()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>Text
+            </div>
+            <div class="add-btn" onclick="addRect()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/></svg>Rectangle
+            </div>
+            <div class="add-btn" onclick="addEllipse()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="6"/></svg>Ellipse
+            </div>
+            <div class="add-btn" onclick="addTriangle()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,4 22,20 2,20"/></svg>Triangle
+            </div>
+            <div class="add-btn" onclick="addLine()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20L20 4"/></svg>Line
+            </div>
+            <div class="add-btn" onclick="triggerImageUpload()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>Image
+            </div>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="panel-label">Quick Styles</div>
+          <div class="add-grid">
+            <div class="add-btn" onclick="addStyledText('title')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h8"/></svg>Big Title
+            </div>
+            <div class="add-btn" onclick="addStyledText('subtitle')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h12M4 18h8"/></svg>Subtitle
+            </div>
+            <div class="add-btn" onclick="addStyledText('badge')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="5"/></svg>Badge
+            </div>
+            <div class="add-btn" onclick="addStyledText('outline')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>Outline
+            </div>
+          </div>
+        </div>
+        <div class="panel-section">
+          <div class="panel-label">Canvas Background</div>
+          <div class="prop-row">
+            <div class="prop-label">BG Color</div>
+            <input class="prop-input" type="color" id="bg-color-picker" value="#1a1a2e" oninput="setBgColor(this.value)" style="height:34px;padding:2px">
+          </div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:5px" onclick="triggerBgUpload()">
+            <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M1 11l4-3 3 3 2-2 5 4"/></svg>Upload BG Image
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="clearBg()">
+            <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg>Remove BG Image
+          </button>
+        </div>
+        <div class="panel-section">
+          <div class="panel-label">Keyboard Shortcuts</div>
+          <div style="font-size:11px;color:var(--muted);line-height:2">
+            <span class="kb-hint">Del</span> delete &nbsp;
+            <span class="kb-hint">Ctrl+D</span> duplicate<br>
+            <span class="kb-hint">Ctrl+Z</span> undo &nbsp;
+            <span class="kb-hint">Ctrl+Y</span> redo<br>
+            <span class="kb-hint">↑↓←→</span> nudge &nbsp;
+            <span class="kb-hint">Shift+→</span> ×10<br>
+            <span class="kb-hint">Space</span> pan mode &nbsp;
+            <span class="kb-hint">Ctrl+G</span> snap grid<br>
+            <span class="kb-hint">F2</span> rename layer
+          </div>
+        </div>
+      </div>
+
+      <!-- LAYERS TAB -->
+      <div class="tab-content" id="tab-layers">
+        <div class="panel-label" style="margin-bottom:8px">
+          Layers <span id="layer-count" style="color:var(--accent);margin-left:4px"></span>
+          <button class="btn btn-ghost btn-sm" onclick="deleteSelected()" id="del-selected-btn" style="display:none">🗑 Del</button>
+        </div>
+        <div class="layers-list" id="layers-list"></div>
+        <div id="no-layers" style="display:none;color:var(--muted);font-size:12px;text-align:center;padding:24px 0;line-height:1.8">No layers yet.<br>Add elements from the <strong>Add</strong> tab.</div>
+      </div>
+
+      <!-- PRESETS TAB -->
+      <div class="tab-content" id="tab-presets">
+        <div class="import-export-bar">
+          <button class="btn btn-ghost btn-sm" style="justify-content:center" onclick="importPresetsFile()">
+            <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V2m-3 4l3 3 3-3"/><path d="M2 10v2h10v-2"/></svg>Import JSON
+          </button>
+          <button class="btn btn-ghost btn-sm" style="justify-content:center" onclick="exportPresetsFile()">
+            <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 5v7m-3-3l3 3 3-3"/><path d="M12 4V2H2v2"/></svg>Export JSON
+          </button>
+        </div>
+        <div class="panel-label">Saved Presets</div>
+        <div class="preset-grid" id="preset-grid"></div>
+        <div id="no-presets" style="display:none;color:var(--muted);font-size:11.5px;text-align:center;padding:24px 0;line-height:1.8">No presets yet.<br>Build a thumbnail and click <strong>Save Preset</strong>!</div>
+      </div>
+
+      <!-- GITHUB TAB -->
+      <div class="tab-content" id="tab-github">
+        <div id="gh-setup-view">
+          <div class="panel-label">🔐 GitHub Sync</div>
+          <div class="prop-row">
+            <div class="prop-label">Personal Access Token</div>
+            <div style="position:relative">
+              <input class="prop-input" type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxx" style="padding-right:34px">
+              <span onclick="toggleTokenVis()" id="tok-eye" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--muted);user-select:none">👁</span>
+            </div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Repository</div>
+            <input class="prop-input" type="text" id="gh-repo-input" placeholder="username/my-thumbnails">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">JSON File Path</div>
+            <input class="prop-input" type="text" id="gh-path-input" placeholder="presets.json" value="presets.json">
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="ghSaveAndConnect()">Save &amp; Connect</button>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            Need a token? Go to<br>
+            <strong style="color:var(--text2)">GitHub → Settings → Developer settings<br>→ Personal access tokens → Classic</strong><br><br>
+            Check the <code style="color:var(--accent);background:var(--surface2);padding:1px 4px;border-radius:3px">repo</code> scope, generate, and paste above.
+          </div>
+        </div>
+        <div id="gh-connected-view" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+            <div class="status-dot ok"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--success)">Connected</span>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;margin-bottom:12px">
+            <div style="color:var(--muted);margin-bottom:3px">Repository</div>
+            <div id="gh-info-repo" style="font-weight:600;color:var(--text)"></div>
+            <div style="color:var(--muted);margin-top:8px;margin-bottom:3px">JSON File</div>
+            <div id="gh-info-path" style="font-weight:600;color:var(--text)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px">
+            <button class="btn btn-ghost" style="justify-content:center;font-size:12px" onclick="ghLoadFromRemote()">⬇ Load</button>
+            <button class="btn btn-primary" style="justify-content:center;font-size:12px" onclick="ghSaveToRemote()">⬆ Save</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px;text-align:center">Load = replace local · Save = overwrite GitHub</div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ghDisconnect()">🔓 Change Credentials</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CANVAS AREA ── -->
+  <div class="canvas-area" id="canvas-area">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="mainCanvas" width="1280" height="720"></canvas>
+    </div>
+    <div class="snap-indicator" id="snap-indicator">⊕ Snapped</div>
+    <div class="zoom-bar">
+      <button class="zoom-btn" onclick="zoomOut()" title="Zoom out (scroll)">−</button>
+      <span class="zoom-val" id="zoom-val" onclick="zoomFit()" title="Click to fit">50%</span>
+      <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
+      <button class="zoom-btn" onclick="zoomFit()" title="Fit to screen">⊡</button>
+      <button class="zoom-btn" onclick="panX=0;panY=0;applyPan()" title="Reset pan">⌖</button>
+      <button class="zoom-btn" id="lock-btn" onclick="toggleViewLock()" title="Lock view">🔓</button>
+      <button class="zoom-btn" id="snap-btn" onclick="toggleSnap()" title="Toggle snap to grid/center">⊞</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+    <div class="panel-tabs" id="right-panel-tabs">
+      <div class="panel-tab active" onclick="switchRightTab('props')">Props</div>
+      <div class="panel-tab" onclick="switchRightTab('bg')">BG</div>
+      <div class="panel-tab" onclick="switchRightTab('github-right')">GitHub</div>
+    </div>
+    <div style="padding:0;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+
+      <!-- PROPS TAB -->
+      <div class="tab-content active" id="right-tab-props" style="flex:1;min-height:0;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent">
+        <div id="props-body">
+          <div class="no-selection">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+            Select an element to edit its properties.
+            <div class="shortcut-hint">Double-click text to edit · <span class="kb-hint">Del</span> to remove</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BG TAB -->
+      <div class="tab-content" id="right-tab-bg" style="padding:12px;overflow-y:auto;flex:1;min-height:0;scrollbar-width:thin;">
+        <div class="panel-section">
+          <div class="panel-label">Canvas Background</div>
+          <div class="prop-row">
+            <div class="prop-label">BG Color</div>
+            <input class="prop-input" type="color" id="bg-color-picker-right" value="#1a1a2e" oninput="setBgColor(this.value)" style="height:34px;padding:2px">
+          </div>
+          <div id="bg-image-info-right" style="display:none" class="prop-row">
+            <div class="bg-image-chip">
+              <svg viewBox="0 0 14 14" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="12" height="10" rx="1"/><circle cx="4.5" cy="5.5" r="1"/><path d="M1 9l3-3 3 3 2-2 4 3"/></svg>
+              <span id="bg-image-name">Image loaded</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:5px" onclick="triggerBgUpload()">
+            <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M1 11l4-3 3 3 2-2 5 4"/></svg>
+            Upload BG Image
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="clearBg()">
+            <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg>
+            Remove BG Image
+          </button>
+        </div>
+        <hr class="section-divider">
+        <div class="panel-section">
+          <div class="panel-label">BG Overlay</div>
+          <div class="prop-row">
+            <div class="prop-label">Overlay Color</div>
+            <div class="prop-color-row">
+              <input type="color" class="prop-color" id="bg-overlay-color" value="#000000" oninput="setBgOverlay()">
+              <input class="prop-input" id="bg-overlay-color-hex" value="#000000" oninput="syncOverlayHex(this.value)" style="flex:1">
+            </div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Overlay Opacity <span id="bg-overlay-val">0</span>%</div>
+            <input type="range" class="prop-slider" id="bg-overlay-opacity" min="0" max="100" value="0" oninput="setBgOverlay()">
+          </div>
+        </div>
+        <hr class="section-divider">
+        <div class="panel-section">
+          <div class="panel-label">BG Transform
+            <span onclick="resetBgTransform()" style="font-size:10px;color:var(--muted);cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0" title="Reset all">↺ Reset</span>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Zoom <span id="bg-zoom-val">100%</span></div>
+            <input type="range" class="prop-slider" id="bg-zoom" min="0.5" max="3" step="0.01" value="1" oninput="setBgTransform()">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Position X <span id="bg-pos-x-val">0px</span></div>
+            <input type="range" class="prop-slider" id="bg-pos-x" min="-640" max="640" step="1" value="0" oninput="setBgTransform()">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Position Y <span id="bg-pos-y-val">0px</span></div>
+            <input type="range" class="prop-slider" id="bg-pos-y" min="-360" max="360" step="1" value="0" oninput="setBgTransform()">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Rotation <span id="bg-rotation-val">0°</span></div>
+            <input type="range" class="prop-slider" id="bg-rotation" min="-180" max="180" step="1" value="0" oninput="setBgTransform()">
+          </div>
+        </div>
+      </div>
+
+      <!-- GITHUB RIGHT -->
+      <div class="tab-content" id="right-tab-github-right" style="padding:12px;overflow-y:auto;flex:1;min-height:0;scrollbar-width:thin;">
+        <div id="gh-setup-view-right">
+          <div class="panel-label">🔐 GitHub Sync</div>
+          <div class="prop-row">
+            <div class="prop-label">Personal Access Token</div>
+            <div style="position:relative">
+              <input class="prop-input" type="password" id="gh-token-input-right" placeholder="ghp_xxxxxxxxxxxx" style="padding-right:34px">
+              <span onclick="toggleTokenVisRight()" id="tok-eye-right" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--muted);user-select:none">👁</span>
+            </div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Repository</div>
+            <input class="prop-input" type="text" id="gh-repo-input-right" placeholder="username/my-thumbnails">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">JSON File Path</div>
+            <input class="prop-input" type="text" id="gh-path-input-right" placeholder="presets.json" value="presets.json">
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="ghSaveAndConnectRight()">Save &amp; Connect</button>
+        </div>
+        <div id="gh-connected-view-right" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+            <div class="status-dot ok"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--success)">Connected</span>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;margin-bottom:12px">
+            <div style="color:var(--muted);margin-bottom:3px">Repository</div>
+            <div id="gh-info-repo-right" style="font-weight:600;color:var(--text)"></div>
+            <div style="color:var(--muted);margin-top:8px;margin-bottom:3px">JSON File</div>
+            <div id="gh-info-path-right" style="font-weight:600;color:var(--text)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px">
+            <button class="btn btn-ghost" style="justify-content:center;font-size:12px" onclick="ghLoadFromRemote()">⬇ Load</button>
+            <button class="btn btn-primary" style="justify-content:center;font-size:12px" onclick="ghSaveToRemote()">⬆ Save</button>
+          </div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ghDisconnectRight()">🔓 Change Credentials</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE: action bar -->
+<div class="mobile-actions">
+  <button class="btn btn-ghost" onclick="confirmNewCanvas()">＋ New</button>
+  <button class="btn btn-ghost" onclick="undo()" id="mob-undo-btn">↩ Undo</button>
+  <button class="btn btn-ghost" onclick="redo()" id="mob-redo-btn">↪ Redo</button>
+  <button class="btn btn-ghost" onclick="savePresetModal()">💾 Save</button>
+  <button class="btn btn-ghost" onclick="exportCanvas()">⬇ PNG</button>
+  <button class="btn btn-ghost" id="mobile-snap-btn" onclick="toggleSnap()">⊞ Snap</button>
+  <button class="btn btn-ghost" id="mobile-lock-btn" onclick="toggleViewLock()">🔓 Lock</button>
+</div>
+
+<!-- MOBILE: bottom nav -->
+<nav class="mobile-nav">
+  <button class="mobile-nav-btn active" id="mnav-add" onclick="openDrawer('add')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>Add
+  </button>
+  <button class="mobile-nav-btn" id="mnav-layers" onclick="openDrawer('layers')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Layers
+  </button>
+  <button class="mobile-nav-btn" id="mnav-presets" onclick="openDrawer('presets')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Presets
+  </button>
+  <button class="mobile-nav-btn" id="mnav-props" onclick="openDrawer('props')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Props
+  </button>
+  <button class="mobile-nav-btn" id="mnav-bg" onclick="openDrawer('bg')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>BG
+  </button>
+  <button class="mobile-nav-btn" id="mnav-github" onclick="openDrawer('github')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>GitHub
+  </button>
+</nav>
+
+<!-- MOBILE: drawer -->
+<div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="mobile-drawer" id="mobile-drawer">
+  <div class="drawer-handle" onclick="closeDrawer()"></div>
+  <div class="drawer-header">
+    <span id="drawer-title">Add Elements</span>
+    <div class="drawer-close" onclick="closeDrawer()">✕</div>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<!-- PRESET MODAL -->
+<div class="modal-bg hidden" id="modal-preset">
+  <div class="modal">
+    <h3>Save Preset</h3>
+    <div class="prop-row">
+      <div class="prop-label">Preset Name</div>
+      <input class="prop-input" id="preset-name-input" placeholder="e.g. Gaming Highlight, Tutorial Blue..." onkeydown="if(event.key==='Enter')savePreset()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-preset')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePreset()">
+        <svg viewBox="0 0 14 14" width="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h8l2 2v8a1 1 0 01-1 1H3a1 1 0 01-1-1V2z"/><rect x="4" y="8" width="6" height="4"/><rect x="4" y="2" width="4" height="3"/></svg>
+        Save Preset
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg hidden" id="modal-confirm">
+  <div class="confirm-dialog">
+    <h4 id="confirm-title">Are you sure?</h4>
+    <p id="confirm-msg"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="bg-upload" accept="image/*" style="display:none" onchange="loadBgImage(event)">
+<input type="file" id="img-upload" accept="image/*" style="display:none" onchange="loadImageElement(event)">
+<input type="file" id="import-presets-upload" accept=".json,application/json" style="display:none" onchange="handleImportPresets(event)">
+
+<script>
+// ─────────────────────────────────────────────
+// CONSTANTS & STATE
+// ─────────────────────────────────────────────
+const W = 1280, H = 720;
+let zoom = 0.5;
+let layers = [];
+let selected = null;
+let dragging = false, dragOffX = 0, dragOffY = 0;
+let bgImageObj = null;
+let bgImageSrc = '';
+let bgImageName = '';
+let bgColor = '#1a1a2e';
+let bgZoom = 1, bgOffsetX = 0, bgOffsetY = 0, bgRotation = 0;
+let bgOverlayColor = '#000000', bgOverlayOpacity = 0;
+let nextId = 1;
+let presets = [];
+let ghConfig = { token: '', repo: '', path: 'presets.json' };
+let panX = 0, panY = 0;
+let isPanning = false, panStartX = 0, panStartY = 0, panStartPX = 0, panStartPY = 0;
+let spaceDown = false;
+let viewLocked = false;
+let snapEnabled = true;
+let snapIndicatorTimer = null;
+
+// Undo/redo
+let history = [];
+let historyIdx = -1;
+const MAX_HISTORY = 50;
+
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+
+// ─────────────────────────────────────────────
+// UNDO / REDO
+// ─────────────────────────────────────────────
+function captureState() {
+  const state = {
+    layers: JSON.parse(JSON.stringify(layers.map(l => l.type === 'image' ? { ...l, imgObj: undefined } : l))),
+    bgColor, bgImageSrc, bgZoom, bgOffsetX, bgOffsetY, bgRotation,
+    bgOverlayColor, bgOverlayOpacity,
+    selectedId: selected ? selected.id : null
+  };
+  // Drop any future states if we branched
+  history = history.slice(0, historyIdx + 1);
+  history.push(state);
+  if (history.length > MAX_HISTORY) history.shift();
+  else historyIdx++;
+  updateUndoRedoBtns();
+}
+
+function restoreState(state) {
+  bgColor = state.bgColor;
+  bgImageSrc = state.bgImageSrc;
+  bgZoom = state.bgZoom; bgOffsetX = state.bgOffsetX; bgOffsetY = state.bgOffsetY; bgRotation = state.bgRotation;
+  bgOverlayColor = state.bgOverlayColor; bgOverlayOpacity = state.bgOverlayOpacity;
+  // Restore bg image object
+  if (bgImageSrc) {
+    const img = new Image();
+    img.onload = () => { bgImageObj = img; render(); };
+    img.src = bgImageSrc;
+  } else { bgImageObj = null; }
+  // Restore layers and their image objects
+  layers = state.layers.map(l => {
+    if (l.type === 'image' && l.src) {
+      const img = new Image();
+      img.onload = () => { l.imgObj = img; render(); };
+      img.src = l.src;
+    }
+    return l;
+  });
+  nextId = layers.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+  selected = state.selectedId ? (layers.find(l => l.id === state.selectedId) || null) : null;
+  syncAllUI();
+}
+
+function undo() {
+  if (historyIdx <= 0) return;
+  historyIdx--;
+  restoreState(history[historyIdx]);
+  updateUndoRedoBtns();
+  toast('Undone', 'info');
+}
+
+function redo() {
+  if (historyIdx >= history.length - 1) return;
+  historyIdx++;
+  restoreState(history[historyIdx]);
+  updateUndoRedoBtns();
+  toast('Redone', 'info');
+}
+
+function updateUndoRedoBtns() {
+  const undoBtn = document.getElementById('undo-btn');
+  const redoBtn = document.getElementById('redo-btn');
+  if (undoBtn) undoBtn.disabled = historyIdx <= 0;
+  if (redoBtn) redoBtn.disabled = historyIdx >= history.length - 1;
+}
+
+// ─────────────────────────────────────────────
+// INIT & PERSISTENCE
+// ─────────────────────────────────────────────
+function init() {
+  loadLocal();
+  applyZoom();
+  render();
+  renderLayers();
+  renderPresets();
+  loadGhConfig();
+  syncBgColorPickers();
+  captureState(); // initial history state
+}
+
+function syncAllUI() {
+  syncBgColorPickers();
+  updateBgSliders();
+  renderLayers();
+  renderPresets();
+  updateProps();
+  render();
+  saveLocal();
+}
+
+function syncBgColorPickers() {
+  const p1 = document.getElementById('bg-color-picker');
+  const p2 = document.getElementById('bg-color-picker-right');
+  if (p1) p1.value = bgColor;
+  if (p2) p2.value = bgColor;
+}
+
+function updateBgSliders() {
+  const ids = { 'bg-zoom': bgZoom, 'bg-pos-x': bgOffsetX, 'bg-pos-y': bgOffsetY, 'bg-rotation': bgRotation, 'bg-overlay-opacity': bgOverlayOpacity };
+  for (const [id, val] of Object.entries(ids)) {
+    const el = document.getElementById(id); if (el) el.value = val;
+  }
+  const bzoV = document.getElementById('bg-zoom-val'); if (bzoV) bzoV.textContent = Math.round(bgZoom * 100) + '%';
+  const bxV = document.getElementById('bg-pos-x-val'); if (bxV) bxV.textContent = bgOffsetX + 'px';
+  const byV = document.getElementById('bg-pos-y-val'); if (byV) byV.textContent = bgOffsetY + 'px';
+  const brV = document.getElementById('bg-rotation-val'); if (brV) brV.textContent = bgRotation + '°';
+  const boV = document.getElementById('bg-overlay-val'); if (boV) boV.textContent = bgOverlayOpacity;
+  const oc = document.getElementById('bg-overlay-color'); if (oc) oc.value = bgOverlayColor;
+  const oh = document.getElementById('bg-overlay-color-hex'); if (oh) oh.value = bgOverlayColor;
+}
+
+function loadLocal() {
+  try {
+    const p = localStorage.getItem('tc_presets');
+    if (p) presets = JSON.parse(p);
+    const l = localStorage.getItem('tc_layers');
+    if (l) {
+      layers = JSON.parse(l);
+      nextId = layers.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+      layers.forEach(layer => {
+        if (layer.type === 'image' && layer.src) {
+          const img = new Image();
+          img.onload = () => { layer.imgObj = img; render(); };
+          img.src = layer.src;
+        }
+      });
+    }
+    const bg = localStorage.getItem('tc_bgcolor');
+    if (bg) bgColor = bg;
+    const bgi = localStorage.getItem('tc_bgimage');
+    if (bgi) { bgImageSrc = bgi; const i = new Image(); i.onload = () => { bgImageObj = i; render(); }; i.src = bgi; }
+    const bgn = localStorage.getItem('tc_bgimagename');
+    if (bgn) bgImageName = bgn;
+    const bgs = localStorage.getItem('tc_bgstate');
+    if (bgs) {
+      const s = JSON.parse(bgs);
+      bgOverlayColor = s.bgOverlayColor ?? '#000000';
+      bgOverlayOpacity = s.bgOverlayOpacity ?? 0;
+      bgZoom = s.bgZoom ?? 1; bgOffsetX = s.bgOffsetX ?? 0;
+      bgOffsetY = s.bgOffsetY ?? 0; bgRotation = s.bgRotation ?? 0;
+    }
+  } catch (e) {}
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem('tc_presets', JSON.stringify(presets));
+    const saveable = layers.map(l => l.type === 'image' ? { ...l, src: l.src || '', imgObj: undefined } : l);
+    localStorage.setItem('tc_layers', JSON.stringify(saveable));
+    localStorage.setItem('tc_bgcolor', bgColor);
+    localStorage.setItem('tc_bgimage', bgImageSrc || '');
+    localStorage.setItem('tc_bgimagename', bgImageName || '');
+    localStorage.setItem('tc_bgstate', JSON.stringify({ bgOverlayColor, bgOverlayOpacity, bgZoom, bgOffsetX, bgOffsetY, bgRotation }));
+  } catch (e) {}
+}
+
+// ─────────────────────────────────────────────
+// ZOOM & PAN
+// ─────────────────────────────────────────────
+function applyZoom() {
+  const wrapper = document.getElementById('canvas-wrapper');
+  wrapper.style.width = (W * zoom) + 'px';
+  wrapper.style.height = (H * zoom) + 'px';
+  canvas.style.width = (W * zoom) + 'px';
+  canvas.style.height = (H * zoom) + 'px';
+  document.getElementById('zoom-val').textContent = Math.round(zoom * 100) + '%';
+  applyPan();
+}
+
+function applyPan() {
+  const area = document.getElementById('canvas-area');
+  const wrapper = document.getElementById('canvas-wrapper');
+  wrapper.style.position = 'absolute';
+  wrapper.style.left = (area.clientWidth / 2 - (W * zoom) / 2 + panX) + 'px';
+  wrapper.style.top = (area.clientHeight / 2 - (H * zoom) / 2 + panY) + 'px';
+}
+
+function zoomIn() { const prev = zoom; zoom = Math.min(3, +(zoom + 0.15).toFixed(2)); panX = panX * (zoom / prev); panY = panY * (zoom / prev); applyZoom(); }
+function zoomOut() { const prev = zoom; zoom = Math.max(0.1, +(zoom - 0.15).toFixed(2)); panX = panX * (zoom / prev); panY = panY * (zoom / prev); applyZoom(); }
+function zoomFit() {
+  const area = document.getElementById('canvas-area');
+  zoom = +Math.min((area.clientWidth - 40) / W, (area.clientHeight - 40) / H, 1).toFixed(2);
+  panX = 0; panY = 0; applyZoom();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+    if (!spaceDown) { spaceDown = true; canvas.style.cursor = 'grab'; }
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', e => { if (e.code === 'Space') { spaceDown = false; canvas.style.cursor = 'default'; } });
+
+document.getElementById('canvas-area').addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+  const prev = zoom;
+  zoom = +Math.min(3, Math.max(0.1, zoom + delta)).toFixed(2);
+  panX = panX * (zoom / prev); panY = panY * (zoom / prev);
+  applyZoom();
+}, { passive: false });
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  if (bgImageObj) {
+    ctx.save();
+    ctx.translate(W / 2 + bgOffsetX, H / 2 + bgOffsetY);
+    ctx.rotate(bgRotation * Math.PI / 180);
+    ctx.scale(bgZoom, bgZoom);
+    const iw = bgImageObj.naturalWidth || bgImageObj.width;
+    const ih = bgImageObj.naturalHeight || bgImageObj.height;
+    const scale = Math.max(W / iw, H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    ctx.drawImage(bgImageObj, -dw / 2, -dh / 2, dw, dh);
+    ctx.restore();
+  } else { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, W, H); }
+  if (bgOverlayOpacity > 0) {
+    ctx.save(); ctx.globalAlpha = bgOverlayOpacity / 100;
+    ctx.fillStyle = bgOverlayColor; ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
+  [...layers].reverse().forEach(l => {
+    if (!l.visible) return;
+    ctx.save();
+    ctx.globalAlpha = (l.opacity ?? 100) / 100;
+    const rot = (l.rotation || 0) * Math.PI / 180;
+    const b = getBoundsRaw(l);
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
+    if (l.type === 'rect') drawRect(l);
+    else if (l.type === 'ellipse') drawEllipse(l);
+    else if (l.type === 'triangle') drawTriangle(l);
+    else if (l.type === 'line') drawLine(l);
+    else if (l.type === 'text') drawText(l);
+    else if (l.type === 'image' && l.imgObj) ctx.drawImage(l.imgObj, l.x, l.y, l.w, l.h);
+    if (selected && selected.id === l.id) drawHandles(l);
+    ctx.restore();
+  });
+}
+
+function drawRect(l) {
+  if (l.fill) { ctx.fillStyle = l.fill; roundRect(l.x, l.y, l.w, l.h, l.radius || 0); ctx.fill(); }
+  if (l.stroke && l.strokeW > 0) { ctx.strokeStyle = l.stroke; ctx.lineWidth = l.strokeW; roundRect(l.x, l.y, l.w, l.h, l.radius || 0); ctx.stroke(); }
+}
+function roundRect(x, y, w, h, r) {
+  if (r === 0) { ctx.beginPath(); ctx.rect(x, y, w, h); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+}
+function drawEllipse(l) {
+  ctx.beginPath(); ctx.ellipse(l.x + l.w / 2, l.y + l.h / 2, l.w / 2, l.h / 2, 0, 0, Math.PI * 2);
+  if (l.fill) { ctx.fillStyle = l.fill; ctx.fill(); }
+  if (l.stroke && l.strokeW > 0) { ctx.strokeStyle = l.stroke; ctx.lineWidth = l.strokeW; ctx.stroke(); }
+}
+function drawTriangle(l) {
+  ctx.beginPath(); ctx.moveTo(l.x + l.w / 2, l.y); ctx.lineTo(l.x + l.w, l.y + l.h); ctx.lineTo(l.x, l.y + l.h); ctx.closePath();
+  if (l.fill) { ctx.fillStyle = l.fill; ctx.fill(); }
+  if (l.stroke && l.strokeW > 0) { ctx.strokeStyle = l.stroke; ctx.lineWidth = l.strokeW; ctx.stroke(); }
+}
+function drawLine(l) {
+  ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x2, l.y2);
+  ctx.strokeStyle = l.stroke || '#ffffff'; ctx.lineWidth = l.strokeW || 4; ctx.stroke();
+}
+function drawText(l) {
+  const sz = l.fontSize || 72;
+  const fw = l.bold ? 'bold ' : l.fontWeight ? l.fontWeight + ' ' : '';
+  const fontStr = `${fw}${sz}px "${l.fontFamily || 'Bebas Neue'}",Impact,sans-serif`;
+  ctx.font = fontStr;
+  const lineH = sz * (l.lineHeight || 1.2);
+  const lines = (l.text || 'Text').split('\n');
+  const hAlign = l.textAlign || 'left';
+  const maxW = Math.max(...lines.map(ln => ctx.measureText(ln).width));
+  const totalH = lineH * lines.length;
+  ctx.font = fontStr;
+  let drawX = l.x;
+  ctx.textAlign = hAlign;
+  if (hAlign === 'center') drawX = l.x + maxW / 2;
+  else if (hAlign === 'right') drawX = l.x + maxW;
+  let drawY = l.y;
+  ctx.textBaseline = 'top';
+  if (l.textStyle === 'outline') {
+    ctx.strokeStyle = l.color || '#ffffff'; ctx.lineWidth = l.outlineW || 6;
+    lines.forEach((ln, i) => ctx.strokeText(ln, drawX, drawY + i * lineH));
+  } else if (l.textStyle === 'badge') {
+    const bw = Math.max(...lines.map(ln => ctx.measureText(ln).width));
+    const pad = 14;
+    ctx.fillStyle = l.bgFill || '#f5c518';
+    roundRect(l.x - pad, l.y - pad / 2, bw + pad * 2, totalH + pad, 6); ctx.fill();
+    ctx.fillStyle = l.color || '#000000';
+    lines.forEach((ln, i) => ctx.fillText(ln, drawX, drawY + i * lineH));
+  } else {
+    if (l.shadow) {
+      ctx.shadowColor = l.shadowColor || 'rgba(0,0,0,0.9)'; ctx.shadowBlur = l.shadowBlur || 12;
+      ctx.shadowOffsetX = l.shadowX || 3; ctx.shadowOffsetY = l.shadowY || 3;
+    }
+    lines.forEach((ln, i) => {
+      if ((l.outlineW || 0) > 0) { ctx.strokeStyle = l.outlineColor || '#000000'; ctx.lineWidth = l.outlineW; ctx.strokeText(ln, drawX, drawY + i * lineH); }
+      ctx.fillStyle = l.color || '#ffffff'; ctx.fillText(ln, drawX, drawY + i * lineH);
+    });
+    ctx.shadowColor = 'transparent';
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawHandles(l) {
+  const b = getBoundsRaw(l), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const p = 6;
+  ctx.strokeStyle = '#f5c518'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+  ctx.strokeRect(b.x - p, b.y - p, b.w + p * 2, b.h + p * 2); ctx.setLineDash([]);
+  const hs = getHandles(l);
+  hs.forEach(h => {
+    ctx.fillStyle = h.id === 'rotate' ? '#e84393' : '#f5c518';
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.id === 'rotate' ? 5 : 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+  });
+}
+
+// ─────────────────────────────────────────────
+// BOUNDS & HIT TEST
+// ─────────────────────────────────────────────
+function getBoundsRaw(l) {
+  if (l.type === 'text') {
+    const sz = l.fontSize || 72;
+    const fw = l.bold ? 'bold ' : '';
+    ctx.font = `${fw}${sz}px "${l.fontFamily || 'Bebas Neue'}",Impact,sans-serif`;
+    const lines = (l.text || 'Text').split('\n');
+    const maxW = Math.max(...lines.map(ln => ctx.measureText(ln).width));
+    return { x: l.x, y: l.y, w: maxW, h: sz * (l.lineHeight || 1.2) * lines.length };
+  }
+  if (l.type === 'line') {
+    return { x: Math.min(l.x, l.x2), y: Math.min(l.y, l.y2), w: Math.abs(l.x2 - l.x) || 1, h: Math.abs(l.y2 - l.y) || 1 };
+  }
+  return { x: l.x, y: l.y, w: l.w || 100, h: l.h || 100 };
+}
+
+function toLocalPos(pos, l) {
+  const b = getBoundsRaw(l), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const rot = -(l.rotation || 0) * Math.PI / 180;
+  const dx = pos.x - cx, dy = pos.y - cy;
+  return { x: dx * Math.cos(rot) - dy * Math.sin(rot) + cx, y: dx * Math.sin(rot) + dy * Math.cos(rot) + cy };
+}
+
+function getHandles(l) {
+  const b = getBoundsRaw(l), p = 6;
+  const x = b.x - p, y = b.y - p, w = b.w + p * 2, h = b.h + p * 2;
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  return [
+    { id: 'nw', x, y }, { id: 'n', x: cx, y }, { id: 'ne', x: x + w, y },
+    { id: 'w', x, y: cy }, { id: 'e', x: x + w, y: cy },
+    { id: 'sw', x, y: y + h }, { id: 's', x: cx, y: y + h }, { id: 'se', x: x + w, y: y + h },
+    { id: 'rotate', x: cx, y: y - 22 }
+  ];
+}
+
+function getHandleAt(pos, l) {
+  const lp = toLocalPos(pos, l);
+  return getHandles(l).find(h => Math.hypot(h.x - lp.x, h.y - lp.y) < 10);
+}
+
+const cursorMap = { nw: 'nw-resize', ne: 'ne-resize', sw: 'sw-resize', se: 'se-resize', n: 'n-resize', s: 's-resize', e: 'e-resize', w: 'w-resize', rotate: 'crosshair' };
+function getCursorForHandle(id) { return cursorMap[id] || 'default'; }
+
+function hitTest(l, p) {
+  const lp = toLocalPos(p, l);
+  const b = getBoundsRaw(l);
+  const pad = (l.type === 'line' || l.type === 'text') ? 22 : 10;
+  return lp.x >= b.x - pad && lp.x <= b.x + b.w + pad && lp.y >= b.y - pad && lp.y <= b.y + b.h + pad;
+}
+
+// ─────────────────────────────────────────────
+// RESIZE
+// ─────────────────────────────────────────────
+function applyResize(l, hid, dx, dy, shift) {
+  const mn = 10;
+  if (l.type === 'line') { if (hid === 'se') { l.x2 += dx; l.y2 += dy; } else { l.x += dx; l.y += dy; } return; }
+  const origW = l.w, origH = l.h;
+  const ratio = origH / origW;
+  if (shift && l.type !== 'line') {
+    let newW = origW, newH = origH;
+    if (hid.includes('e')) newW = Math.max(mn, origW + dx);
+    else if (hid.includes('w')) { newW = Math.max(mn, origW - dx); }
+    if (hid.includes('s')) newH = Math.max(mn, origH + dy);
+    else if (hid.includes('n')) { newH = Math.max(mn, origH - dy); }
+    if (hid === 'se' || hid === 'ne' || hid === 'e') { newW = Math.max(mn, origW + dx); newH = Math.max(mn, Math.round(newW * ratio)); }
+    else if (hid === 'sw' || hid === 'nw' || hid === 'w') { newW = Math.max(mn, origW - dx); newH = Math.max(mn, Math.round(newW * ratio)); l.x += origW - newW; }
+    else if (hid === 's') { newH = Math.max(mn, origH + dy); newW = Math.max(mn, Math.round(newH / ratio)); }
+    else if (hid === 'n') { newH = Math.max(mn, origH - dy); newW = Math.max(mn, Math.round(newH / ratio)); l.y += origH - newH; }
+    l.w = newW; l.h = newH; return;
+  }
+  if (hid.includes('e')) l.w = Math.max(mn, l.w + dx);
+  if (hid.includes('s')) l.h = Math.max(mn, l.h + dy);
+  if (hid.includes('w')) { const nw = Math.max(mn, l.w - dx); l.x += l.w - nw; l.w = nw; }
+  if (hid.includes('n')) { const nh = Math.max(mn, l.h - dy); l.y += l.h - nh; l.h = nh; }
+}
+
+// ─────────────────────────────────────────────
+// SNAP
+// ─────────────────────────────────────────────
+function toggleSnap() {
+  snapEnabled = !snapEnabled;
+  const btn = document.getElementById('snap-btn');
+  const mBtn = document.getElementById('mobile-snap-btn');
+  const color = snapEnabled ? 'var(--accent)' : '';
+  const title = snapEnabled ? 'Snap: ON (click to disable)' : 'Snap: OFF (click to enable)';
+  if (btn) { btn.style.color = color; btn.title = title; }
+  if (mBtn) { mBtn.style.color = color; }
+  toast(snapEnabled ? '⊕ Snap enabled' : 'Snap disabled', 'info');
+}
+
+function snapPos(l) {
+  if (!snapEnabled) return false;
+  const b = getBoundsRaw(l);
+  const lCx = l.x + b.w / 2, lCy = l.y + b.h / 2;
+  const threshold = 12 / zoom;
+  let snapped = false;
+  // Snap center to canvas center
+  if (Math.abs(lCx - W / 2) < threshold) { l.x = W / 2 - b.w / 2; snapped = true; }
+  if (Math.abs(lCy - H / 2) < threshold) { l.y = H / 2 - b.h / 2; snapped = true; }
+  // Snap edges to canvas edges
+  if (Math.abs(l.x) < threshold) { l.x = 0; snapped = true; }
+  if (Math.abs(l.y) < threshold) { l.y = 0; snapped = true; }
+  if (Math.abs(l.x + b.w - W) < threshold) { l.x = W - b.w; snapped = true; }
+  if (Math.abs(l.y + b.h - H) < threshold) { l.y = H - b.h; snapped = true; }
+  if (snapped) showSnapIndicator();
+  return snapped;
+}
+
+function showSnapIndicator() {
+  const el = document.getElementById('snap-indicator');
+  if (!el) return;
+  el.classList.add('show');
+  if (snapIndicatorTimer) clearTimeout(snapIndicatorTimer);
+  snapIndicatorTimer = setTimeout(() => el.classList.remove('show'), 1000);
+}
+
+// ─────────────────────────────────────────────
+// VIEW LOCK
+// ─────────────────────────────────────────────
+function setViewLock(locked) {
+  viewLocked = locked;
+  ['lock-btn', 'mobile-lock-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isMobile = id === 'mobile-lock-btn';
+    el.textContent = locked ? (isMobile ? '🔒 Lock' : '🔒') : (isMobile ? '🔓 Lock' : '🔓');
+    el.title = locked ? 'View locked — click to unlock' : 'Lock view';
+    el.style.color = locked ? 'var(--accent)' : '';
+  });
+}
+function toggleViewLock() { setViewLock(!viewLocked); toast(viewLocked ? '🔒 View locked' : '🔓 View unlocked', 'info'); }
+
+// ─────────────────────────────────────────────
+// MOUSE INTERACTION
+// ─────────────────────────────────────────────
+let resizing = false, resizeHandle = null, resizeStartPos = null, resizeSnap = null;
+let dragLineX2Off = 0, dragLineY2Off = 0;
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 1 || (e.button === 0 && spaceDown)) {
+    if (viewLocked) return;
+    isPanning = true; panStartX = e.clientX; panStartY = e.clientY;
+    panStartPX = panX; panStartPY = panY; canvas.style.cursor = 'grabbing';
+    e.preventDefault(); return;
+  }
+  const pos = cpos(e);
+  if (selected && !selected.locked) {
+    const h = getHandleAt(pos, selected);
+    if (h) {
+      resizing = true; resizeHandle = h.id; resizeStartPos = { x: pos.x, y: pos.y };
+      resizeSnap = JSON.parse(JSON.stringify(selected));
+      canvas.style.cursor = getCursorForHandle(h.id);
+      e.preventDefault(); return;
+    }
+  }
+  const hit = [...layers].find(l => l.visible && hitTest(l, pos));
+  if (hit) {
+    selectLayer(hit);
+    if (!hit.locked) {
+      dragging = true; dragOffX = pos.x - hit.x; dragOffY = pos.y - hit.y;
+      if (hit.type === 'line') { dragLineX2Off = hit.x2 - hit.x; dragLineY2Off = hit.y2 - hit.y; }
+      canvas.style.cursor = 'grabbing';
+    }
+  } else { selectLayer(null); }
+  render();
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (isPanning) { panX = panStartPX + (e.clientX - panStartX); panY = panStartPY + (e.clientY - panStartY); applyPan(); return; }
+  const pos = cpos(e);
+  if (resizing && selected) {
+    if (resizeHandle === 'rotate') {
+      const b = getBoundsRaw(resizeSnap), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      const startAngle = Math.atan2(resizeStartPos.y - cy, resizeStartPos.x - cx);
+      const curAngle = Math.atan2(pos.y - cy, pos.x - cx);
+      let deg = (resizeSnap.rotation || 0) + (curAngle - startAngle) * 180 / Math.PI;
+      if (Math.abs(deg % 45) < 5) deg = Math.round(deg / 45) * 45;
+      selected.rotation = +deg.toFixed(1);
+    } else {
+      const lp = toLocalPos(pos, resizeSnap), lsp = toLocalPos(resizeStartPos, resizeSnap);
+      Object.assign(selected, JSON.parse(JSON.stringify(resizeSnap)));
+      applyResize(selected, resizeHandle, lp.x - lsp.x, lp.y - lsp.y, e.shiftKey);
+    }
+    render(); return;
+  }
+  if (dragging && selected && !selected.locked) {
+    selected.x = pos.x - dragOffX; selected.y = pos.y - dragOffY;
+    if (selected.type === 'line') { selected.x2 = selected.x + dragLineX2Off; selected.y2 = selected.y + dragLineY2Off; }
+    snapPos(selected);
+    render();
+  } else {
+    if (spaceDown) { canvas.style.cursor = 'grab'; return; }
+    if (selected) { const h = getHandleAt(pos, selected); if (h) { canvas.style.cursor = getCursorForHandle(h.id); return; } }
+    const hit = [...layers].find(l => l.visible && hitTest(l, pos));
+    canvas.style.cursor = hit ? 'grab' : 'default';
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (isPanning) { isPanning = false; canvas.style.cursor = spaceDown ? 'grab' : 'default'; return; }
+  if (resizing) { resizing = false; resizeHandle = null; resizeSnap = null; canvas.style.cursor = 'default'; captureState(); saveLocal(); return; }
+  if (dragging) { captureState(); saveLocal(); }
+  dragging = false; canvas.style.cursor = 'default';
+});
+canvas.addEventListener('mouseleave', () => { if (isPanning) isPanning = false; });
+
+const canvasArea = document.getElementById('canvas-area');
+canvasArea.addEventListener('mousedown', e => {
+  if (viewLocked) return;
+  if (e.target !== canvas && (e.button === 1 || e.button === 0)) {
+    isPanning = true; panStartX = e.clientX; panStartY = e.clientY;
+    panStartPX = panX; panStartPY = panY; canvasArea.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+});
+canvasArea.addEventListener('mousemove', e => {
+  if (isPanning && e.target !== canvas) { panX = panStartPX + (e.clientX - panStartX); panY = panStartPY + (e.clientY - panStartY); applyPan(); }
+});
+canvasArea.addEventListener('mouseup', () => { if (isPanning) { isPanning = false; canvasArea.style.cursor = ''; } });
+
+canvas.addEventListener('dblclick', e => {
+  const pos = cpos(e);
+  const hit = [...layers].find(l => l.visible && hitTest(l, pos));
+  if (hit && hit.type === 'text') openInlineEditor(hit);
+});
+
+// ─────────────────────────────────────────────
+// INLINE TEXT EDITOR
+// ─────────────────────────────────────────────
+function openInlineEditor(l) {
+  if (typeof closeDrawer === 'function') closeDrawer();
+  const existing = document.getElementById('inline-text-editor');
+  if (existing) existing.remove();
+  const b = getBoundsRaw(l);
+  const wrapper = document.getElementById('canvas-wrapper');
+  const wRect = wrapper.getBoundingClientRect();
+  const ta = document.createElement('textarea');
+  ta.id = 'inline-text-editor';
+  ta.value = l.text || '';
+  const sz = (l.fontSize || 72) * zoom;
+  const rawTop = wRect.top + b.y * zoom;
+  const isMobile = window.innerWidth <= 700;
+  const topPos = isMobile ? Math.min(rawTop, window.innerHeight * 0.35) : rawTop;
+  ta.style.cssText = `position:fixed;left:${Math.max(4, wRect.left + b.x * zoom)}px;top:${Math.max(8, topPos)}px;min-width:${Math.max(b.w * zoom, 120)}px;min-height:${Math.max(b.h * zoom, sz * 1.4)}px;max-width:calc(100vw - 16px);font-size:${Math.min(sz, isMobile ? 48 : 9999)}px;font-family:"${l.fontFamily || 'Bebas Neue'}",Impact,sans-serif;font-weight:${l.bold ? 'bold' : 'normal'};color:${l.color || '#ffffff'};background:rgba(0,0,0,0.75);border:2px solid var(--accent);border-radius:6px;padding:6px 10px;outline:none;resize:none;overflow:hidden;line-height:${l.lineHeight || 1.2};z-index:9999;box-sizing:border-box;white-space:pre;`;
+  function autoGrow() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+  ta.addEventListener('input', () => { autoGrow(); l.text = ta.value; render(); });
+  ta.addEventListener('keydown', e => { if (e.key === 'Escape') { ta.remove(); captureState(); saveLocal(); } e.stopPropagation(); });
+  ta.addEventListener('blur', () => { ta.remove(); l.text = ta.value; render(); captureState(); saveLocal(); });
+  document.body.appendChild(ta);
+  setTimeout(() => { autoGrow(); ta.focus(); ta.select(); }, 10);
+}
+
+// ─────────────────────────────────────────────
+// TOUCH
+// ─────────────────────────────────────────────
+let touch1 = null, touch2 = null, pinchDist0 = 0, zoom0 = 1;
+let lastTapTime = 0, lastTapLayer = null;
+let touchPanStart = null, touchPanP = null, touchOnLayer = false;
+let touchMoved = false, touchStartPos = null;
+let touchResizing = false, touchResizeHandle = null, touchResizeSnap = null, touchResizeStart = null;
+
+canvasArea.addEventListener('touchstart', e => {
+  touchMoved = false;
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    touchStartPos = { x: t.clientX, y: t.clientY };
+    const pos = cposFromClient(t.clientX, t.clientY);
+    if (selected && !selected.locked) {
+      const h = getHandleAt(pos, selected);
+      if (h) { touchResizing = true; touchResizeHandle = h.id; touchResizeStart = { x: pos.x, y: pos.y }; touchResizeSnap = JSON.parse(JSON.stringify(selected)); e.preventDefault(); return; }
+    }
+    const hit = [...layers].find(l => l.visible && hitTest(l, pos));
+    touchOnLayer = !!hit;
+    if (hit) { selectLayer(hit); if (!hit.locked) { dragging = true; dragOffX = pos.x - hit.x; dragOffY = pos.y - hit.y; if (hit.type === 'line') { dragLineX2Off = hit.x2 - hit.x; dragLineY2Off = hit.y2 - hit.y; } } render(); }
+    else if (!viewLocked) { touchPanStart = { x: t.clientX, y: t.clientY }; touchPanP = { x: panX, y: panY }; }
+  } else if (e.touches.length === 2) {
+    dragging = false; touchOnLayer = false; touchResizing = false;
+    touch1 = e.touches[0]; touch2 = e.touches[1];
+    pinchDist0 = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+    zoom0 = zoom;
+    touchPanStart = { x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2 };
+    touchPanP = { x: panX, y: panY }; e.preventDefault();
+  }
+}, { passive: false });
+
+canvasArea.addEventListener('touchmove', e => {
+  e.preventDefault(); touchMoved = true;
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    const pos = cposFromClient(t.clientX, t.clientY);
+    if (touchResizing && selected) {
+      if (touchResizeHandle === 'rotate') {
+        const b = getBoundsRaw(touchResizeSnap), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        const sa = Math.atan2(touchResizeStart.y - cy, touchResizeStart.x - cx);
+        const ca = Math.atan2(pos.y - cy, pos.x - cx);
+        let deg = (touchResizeSnap.rotation || 0) + (ca - sa) * 180 / Math.PI;
+        if (Math.abs(deg % 45) < 5) deg = Math.round(deg / 45) * 45;
+        selected.rotation = +deg.toFixed(1);
+      } else {
+        const lp = toLocalPos(pos, touchResizeSnap), lsp = toLocalPos(touchResizeStart, touchResizeSnap);
+        Object.assign(selected, JSON.parse(JSON.stringify(touchResizeSnap)));
+        applyResize(selected, touchResizeHandle, lp.x - lsp.x, lp.y - lsp.y, false);
+      }
+      render();
+    } else if (dragging && selected && touchOnLayer) {
+      selected.x = pos.x - dragOffX; selected.y = pos.y - dragOffY;
+      if (selected.type === 'line') { selected.x2 = selected.x + dragLineX2Off; selected.y2 = selected.y + dragLineY2Off; }
+      snapPos(selected); render();
+    } else if (!viewLocked && !touchOnLayer && touchPanStart) {
+      panX = touchPanP.x + (t.clientX - touchPanStart.x); panY = touchPanP.y + (t.clientY - touchPanStart.y); applyPan();
+    }
+  } else if (e.touches.length === 2) {
+    const t1 = e.touches[0], t2 = e.touches[1];
+    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    zoom = Math.min(3, Math.max(0.1, +(zoom0 * dist / pinchDist0).toFixed(2)));
+    panX = touchPanP.x + ((t1.clientX + t2.clientX) / 2 - touchPanStart.x);
+    panY = touchPanP.y + ((t1.clientY + t2.clientY) / 2 - touchPanStart.y);
+    applyZoom();
+  }
+}, { passive: false });
+
+canvasArea.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    if (touchResizing) { touchResizing = false; touchResizeHandle = null; touchResizeSnap = null; captureState(); saveLocal(); return; }
+    if (dragging) { dragging = false; captureState(); saveLocal(); }
+    if (!touchMoved && touchStartPos) {
+      const pos = cposFromClient(touchStartPos.x, touchStartPos.y);
+      const hit = [...layers].find(l => l.visible && hitTest(l, pos));
+      const now = Date.now();
+      if (hit && hit.type === 'text' && hit === lastTapLayer && (now - lastTapTime) < 400) {
+        lastTapTime = 0; lastTapLayer = null; openInlineEditor(hit);
+      } else { lastTapTime = now; lastTapLayer = hit || null; if (!hit) selectLayer(null); }
+    }
+    touchPanStart = null; touch1 = null; touch2 = null; touchOnLayer = false; touchStartPos = null;
+  }
+});
+
+function cpos(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom }; }
+function cposFromClient(cx, cy) { const r = canvas.getBoundingClientRect(); return { x: (cx - r.left) / zoom, y: (cy - r.top) / zoom }; }
+
+// ─────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') return;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+  // Undo/Redo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
+
+  if (!selected) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateSelected(); return; }
+  if (e.key === 'F2') { startLayerRename(selected.id); return; }
+  if (selected.locked && e.key !== 'F2') return;
+
+  const s = e.shiftKey ? 10 : 1;
+  if (e.key === 'ArrowLeft') { selected.x -= s; if (selected.type === 'line') selected.x2 -= s; }
+  else if (e.key === 'ArrowRight') { selected.x += s; if (selected.type === 'line') selected.x2 += s; }
+  else if (e.key === 'ArrowUp') { selected.y -= s; if (selected.type === 'line') selected.y2 -= s; }
+  else if (e.key === 'ArrowDown') { selected.y += s; if (selected.type === 'line') selected.y2 += s; }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); return; }
+  else return;
+  e.preventDefault();
+  render(); updateProps(); saveLocal();
+});
+
+// ─────────────────────────────────────────────
+// LAYERS
+// ─────────────────────────────────────────────
+function addLayer(l) {
+  l.id = nextId++; l.visible = true; l.locked = false;
+  layers.unshift(l); selectLayer(l); render();
+  renderLayers();
+  // Auto-switch to layers tab so user can see what they added
+  saveLocal(); captureState();
+}
+function selectLayer(l) { selected = l; renderLayers(); updateProps(); render(); updateDelBtn(); }
+function updateDelBtn() {
+  const btn = document.getElementById('del-selected-btn');
+  if (btn) btn.style.display = selected ? 'inline-flex' : 'none';
+}
+function deleteSelected() {
+  if (!selected) return;
+  layers = layers.filter(x => x.id !== selected.id); selected = null;
+  render(); renderLayers(); updateProps(); updateDelBtn(); captureState(); saveLocal();
+}
+function moveLayerUp(id) {
+  const i = layers.findIndex(l => l.id === id);
+  if (i > 0) { [layers[i], layers[i - 1]] = [layers[i - 1], layers[i]]; render(); renderLayers(); captureState(); saveLocal(); }
+}
+function moveLayerDown(id) {
+  const i = layers.findIndex(l => l.id === id);
+  if (i < layers.length - 1) { [layers[i], layers[i + 1]] = [layers[i + 1], layers[i]]; render(); renderLayers(); captureState(); saveLocal(); }
+}
+
+// ─────────────────────────────────────────────
+// ADD ELEMENTS
+// ─────────────────────────────────────────────
+function viewCenter() {
+  const area = document.getElementById('canvas-area');
+  const cx = (area.clientWidth / 2 - panX) / zoom;
+  const cy = (area.clientHeight / 2 - panY) / zoom;
+  return { x: Math.max(0, Math.min(W - 400, cx - 200)), y: Math.max(0, Math.min(H - 200, cy - 100)) };
+}
+
+function addText() { const { x, y } = viewCenter(); addLayer({ type: 'text', name: 'Text', text: 'NEW TEXT', x, y, fontSize: 80, fontFamily: 'Bebas Neue', color: '#ffffff', outlineW: 4, outlineColor: '#000000', shadow: true, shadowColor: 'rgba(0,0,0,0.85)', shadowBlur: 10, shadowX: 3, shadowY: 3, opacity: 100, textStyle: 'normal', lineHeight: 1.2 }); }
+function addStyledText(s) {
+  const { x, y } = viewCenter();
+  if (s === 'title') addLayer({ type: 'text', name: 'Big Title', text: 'TITLE HERE', x, y, fontSize: 120, fontFamily: 'Bebas Neue', color: '#f5c518', outlineW: 6, outlineColor: '#000000', shadow: true, shadowColor: 'rgba(0,0,0,0.9)', shadowBlur: 15, shadowX: 4, shadowY: 4, opacity: 100, textStyle: 'normal', lineHeight: 1.2 });
+  else if (s === 'subtitle') addLayer({ type: 'text', name: 'Subtitle', text: 'Subtitle here', x, y: y + 80, fontSize: 46, fontFamily: 'DM Sans', color: '#ffffff', outlineW: 3, outlineColor: '#000000', shadow: true, shadowColor: 'rgba(0,0,0,0.7)', shadowBlur: 8, shadowX: 2, shadowY: 2, opacity: 100, textStyle: 'normal', lineHeight: 1.3 });
+  else if (s === 'badge') addLayer({ type: 'text', name: 'Badge', text: 'NEW!', x, y, fontSize: 52, fontFamily: 'Bebas Neue', color: '#000000', outlineW: 0, outlineColor: '#000', shadow: false, opacity: 100, textStyle: 'badge', bgFill: '#f5c518', lineHeight: 1.2 });
+  else if (s === 'outline') addLayer({ type: 'text', name: 'Outline Text', text: 'OUTLINE', x, y, fontSize: 100, fontFamily: 'Bebas Neue', color: '#ffffff', outlineW: 0, outlineColor: '#000', shadow: false, opacity: 100, textStyle: 'outline', lineHeight: 1.2 });
+}
+function addRect() { const { x, y } = viewCenter(); addLayer({ type: 'rect', name: 'Rectangle', x, y, w: 320, h: 130, fill: 'rgba(245,197,24,0.85)', stroke: '#000000', strokeW: 0, radius: 0, opacity: 100 }); }
+function addEllipse() { const { x, y } = viewCenter(); addLayer({ type: 'ellipse', name: 'Ellipse', x, y, w: 300, h: 200, fill: 'rgba(232,67,147,0.75)', stroke: '#ffffff', strokeW: 0, opacity: 100 }); }
+function addTriangle() { const { x, y } = viewCenter(); addLayer({ type: 'triangle', name: 'Triangle', x, y, w: 200, h: 180, fill: 'rgba(255,71,87,0.85)', stroke: '#000', strokeW: 0, opacity: 100 }); }
+function addLine() { const { x, y } = viewCenter(); addLayer({ type: 'line', name: 'Line', x, y: y + 50, x2: x + 400, y2: y + 50, stroke: '#f5c518', strokeW: 6, opacity: 100 }); }
+
+function triggerBgUpload() { document.getElementById('bg-upload').click(); }
+function triggerImageUpload() { document.getElementById('img-upload').click(); }
+function loadBgImage(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const i = new Image();
+    i.onload = () => { bgImageObj = i; bgImageSrc = ev.target.result; bgImageName = f.name; render(); captureState(); saveLocal(); updateBgImageInfo(); };
+    i.src = ev.target.result;
+  };
+  r.readAsDataURL(f); e.target.value = '';
+}
+function loadImageElement(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const i = new Image();
+    i.onload = () => {
+      const ratio = i.width / i.height, w = Math.min(500, i.width), h = w / ratio;
+      const { x, y } = viewCenter();
+      addLayer({ type: 'image', name: f.name.replace(/\.[^.]+$/, ''), x, y, w, h, src: ev.target.result, imgObj: i, opacity: 100, uniformScale: true });
+    };
+    i.src = ev.target.result;
+  };
+  r.readAsDataURL(f); e.target.value = '';
+}
+function setBgColor(v) {
+  bgColor = v; syncBgColorPickers();
+  if (!bgImageObj) render(); saveLocal();
+}
+function clearBg() { bgImageObj = null; bgImageSrc = ''; bgImageName = ''; render(); captureState(); saveLocal(); updateBgImageInfo(); toast('BG image removed', 'info'); }
+
+// ─────────────────────────────────────────────
+// ALIGNMENT
+// ─────────────────────────────────────────────
+function alignLayer(dir) {
+  if (!selected) return;
+  const b = getBoundsRaw(selected);
+  switch (dir) {
+    case 'left':   selected.x = 0; break;
+    case 'center': selected.x = (W - b.w) / 2; break;
+    case 'right':  selected.x = W - b.w; break;
+    case 'top':    selected.y = 0; break;
+    case 'middle': selected.y = (H - b.h) / 2; break;
+    case 'bottom': selected.y = H - b.h; break;
+  }
+  render(); updateProps(); captureState(); saveLocal();
+}
+
+// ─────────────────────────────────────────────
+// LAYER LIST
+// ─────────────────────────────────────────────
+function renderLayers() {
+  const list = document.getElementById('layers-list');
+  const cnt = document.getElementById('layer-count');
+  const none = document.getElementById('no-layers');
+  if (!list) return;
+  cnt.textContent = `(${layers.length})`;
+  none.style.display = layers.length ? 'none' : 'block';
+  const icons = { text: 'T', rect: '▭', ellipse: '◯', triangle: '△', line: '╱', image: '🖼' };
+  list.innerHTML = layers.map(l => `
+    <div class="layer-item${selected && selected.id === l.id ? ' selected' : ''}" onclick="selectLayerById(${l.id})">
+      <span class="layer-icon" style="opacity:${l.visible ? 1 : 0.35}">${icons[l.type] || '◆'}</span>
+      <span class="layer-name" id="ln-${l.id}" style="opacity:${l.visible ? 1 : 0.4};font-style:${l.locked ? 'italic' : 'normal'}">${esc(l.name)}</span>
+      <div class="layer-actions">
+        <button class="layer-btn accent" onclick="event.stopPropagation();moveLayerUp(${l.id})" title="Move up">▲</button>
+        <button class="layer-btn accent" onclick="event.stopPropagation();moveLayerDown(${l.id})" title="Move down">▼</button>
+        <button class="layer-btn" onclick="event.stopPropagation();toggleVis(${l.id})" title="${l.visible ? 'Hide' : 'Show'}">${l.visible ? '👁' : '🚫'}</button>
+        <button class="layer-btn" onclick="event.stopPropagation();toggleLock(${l.id})" title="${l.locked ? 'Unlock' : 'Lock'}">${l.locked ? '🔒' : '🔓'}</button>
+        <button class="layer-btn danger" onclick="event.stopPropagation();deleteLayerById(${l.id})" title="Delete">✕</button>
+      </div>
+    </div>
+  `).join('');
+  updateDelBtn();
+}
+
+function startLayerRename(id) {
+  switchTab('layers');
+  const el = document.getElementById('ln-' + id);
+  if (!el) return;
+  const l = layers.find(x => x.id === id);
+  if (!l) return;
+  const input = document.createElement('input');
+  input.className = 'layer-name-edit';
+  input.value = l.name;
+  input.onclick = e => e.stopPropagation();
+  input.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === 'Escape') { l.name = input.value.trim() || l.name; renderLayers(); updateProps(); saveLocal(); }
+    e.stopPropagation();
+  };
+  input.onblur = () => { l.name = input.value.trim() || l.name; renderLayers(); updateProps(); saveLocal(); };
+  el.replaceWith(input);
+  input.focus(); input.select();
+}
+
+function selectLayerById(id) { selectLayer(layers.find(l => l.id === id) || null); }
+function deleteLayerById(id) {
+  layers = layers.filter(l => l.id !== id);
+  if (selected && selected.id === id) selected = null;
+  render(); renderLayers(); updateProps(); updateDelBtn(); captureState(); saveLocal();
+}
+function toggleVis(id) { const l = layers.find(x => x.id === id); if (l) { l.visible = !l.visible; render(); renderLayers(); saveLocal(); } }
+function toggleLock(id) { const l = layers.find(x => x.id === id); if (l) { l.locked = !l.locked; renderLayers(); saveLocal(); toast(l.locked ? '🔒 Layer locked' : '🔓 Layer unlocked', 'info'); } }
+
+// ─────────────────────────────────────────────
+// PRESETS
+// ─────────────────────────────────────────────
+function savePresetModal() { document.getElementById('modal-preset').classList.remove('hidden'); setTimeout(() => document.getElementById('preset-name-input').focus(), 50); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function savePreset() {
+  const name = document.getElementById('preset-name-input').value.trim();
+  if (!name) { toast('Please enter a preset name', 'error'); return; }
+  const snap = canvas.toDataURL('image/jpeg', 0.3);
+  const ld = layers.map(l => { const c = { ...l }; if (c.type === 'image') { c.src = l.src || ''; delete c.imgObj; } return c; });
+  presets.push({ id: Date.now(), name, thumb: snap, bgColor, bgImageSrc: bgImageSrc || '', bgOverlayColor, bgOverlayOpacity, bgZoom, bgOffsetX, bgOffsetY, bgRotation, layers: ld });
+  renderPresets(); saveLocal(); closeModal('modal-preset');
+  document.getElementById('preset-name-input').value = '';
+  toast('✓ Preset saved!', 'success');
+}
+
+function renderPresets() {
+  const grid = document.getElementById('preset-grid');
+  const none = document.getElementById('no-presets');
+  if (!presets.length) { if (grid) grid.innerHTML = ''; if (none) none.style.display = 'block'; return; }
+  if (none) none.style.display = 'none';
+  if (grid) grid.innerHTML = presets.map(p => `
+    <div class="preset-card" onclick="loadPreset(${p.id})">
+      <div class="preset-thumb" style="background-image:url('${p.thumb}')"></div>
+      <div class="preset-name">${esc(p.name)}</div>
+      <div class="preset-preview-badge">
+        <div class="pv-load">Load</div>
+      </div>
+      <button class="preset-del-btn" onclick="event.stopPropagation();confirmDeletePreset(${p.id})" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+function loadPreset(id) {
+  const p = presets.find(x => x.id === id); if (!p) return;
+  bgColor = p.bgColor || '#1a1a2e';
+  bgImageObj = null; bgImageSrc = '';
+  if (p.bgImageSrc) { bgImageSrc = p.bgImageSrc; const i = new Image(); i.onload = () => { bgImageObj = i; render(); updateBgImageInfo(); }; i.src = p.bgImageSrc; }
+  bgOverlayColor = p.bgOverlayColor ?? '#000000';
+  bgOverlayOpacity = p.bgOverlayOpacity ?? 0;
+  bgZoom = p.bgZoom ?? 1; bgOffsetX = p.bgOffsetX ?? 0; bgOffsetY = p.bgOffsetY ?? 0; bgRotation = p.bgRotation ?? 0;
+  layers = (p.layers || []).map(l => {
+    if (l.type === 'image' && l.src) { const i = new Image(); i.onload = () => { l.imgObj = i; render(); }; i.src = l.src; }
+    return l;
+  });
+  nextId = layers.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+  selected = null;
+  syncAllUI(); captureState();
+  toast(`Loaded: ${p.name}`, 'success');
+}
+function confirmDeletePreset(id) {
+  const p = presets.find(x => x.id === id); if (!p) return;
+  showConfirm('Delete Preset', `Delete "${esc(p.name)}"? This cannot be undone.`, () => {
+    presets = presets.filter(x => x.id !== id); renderPresets(); saveLocal();
+    toast('Preset deleted', 'info');
+  });
+}
+function deletePreset(id) { presets = presets.filter(p => p.id !== id); renderPresets(); saveLocal(); }
+
+// Preset import/export (JSON file)
+function exportPresetsFile() {
+  if (!presets.length) { toast('No presets to export', 'error'); return; }
+  const saveable = presets.map(p => ({ ...p }));
+  const blob = new Blob([JSON.stringify(saveable, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'thumbcraft-presets.json'; a.click();
+  toast('✓ Presets exported', 'success');
+}
+function importPresetsFile() { document.getElementById('import-presets-upload').click(); }
+function handleImportPresets(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+      presets = [...presets, ...imported];
+      renderPresets(); saveLocal();
+      toast(`✓ Imported ${imported.length} preset(s)`, 'success');
+    } catch (err) { toast('Import failed: invalid JSON', 'error'); }
+  };
+  r.readAsText(f); e.target.value = '';
+}
+// Alias for topbar button
+function exportPresets() { exportPresetsFile(); }
+
+// ─────────────────────────────────────────────
+// CONFIRM MODAL
+// ─────────────────────────────────────────────
+function showConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const okBtn = document.getElementById('confirm-ok-btn');
+  okBtn.onclick = () => { closeModal('modal-confirm'); onOk(); };
+  document.getElementById('modal-confirm').classList.remove('hidden');
+}
+
+function confirmNewCanvas() {
+  showConfirm('New Canvas', 'Clear the canvas? All layers will be removed. This cannot be undone.', () => {
+    layers = []; selected = null; bgImageObj = null; bgImageSrc = ''; bgImageName = '';
+    bgColor = '#1a1a2e'; bgZoom = 1; bgOffsetX = 0; bgOffsetY = 0; bgRotation = 0;
+    bgOverlayOpacity = 0;
+    syncAllUI(); captureState();
+    toast('New canvas created', 'info');
+  });
+}
+
+// ─────────────────────────────────────────────
+// GITHUB
+// ─────────────────────────────────────────────
+function loadGhConfig() {
+  try {
+    const c = localStorage.getItem('tc_gh');
+    if (c) { ghConfig = JSON.parse(c); if (ghConfig.token && ghConfig.repo) showGhConnected(); else showGhSetup(); }
+    else showGhSetup();
+  } catch (e) { showGhSetup(); }
+}
+function showGhSetup() {
+  document.getElementById('gh-setup-view').style.display = 'block';
+  document.getElementById('gh-connected-view').style.display = 'none';
+  document.getElementById('gh-setup-view-right').style.display = 'block';
+  document.getElementById('gh-connected-view-right').style.display = 'none';
+  if (ghConfig.repo) { document.getElementById('gh-repo-input').value = ghConfig.repo; document.getElementById('gh-repo-input-right').value = ghConfig.repo; }
+  if (ghConfig.path) { document.getElementById('gh-path-input').value = ghConfig.path; document.getElementById('gh-path-input-right').value = ghConfig.path; }
+}
+function showGhConnected() {
+  document.getElementById('gh-setup-view').style.display = 'none';
+  document.getElementById('gh-connected-view').style.display = 'block';
+  document.getElementById('gh-setup-view-right').style.display = 'none';
+  document.getElementById('gh-connected-view-right').style.display = 'block';
+  document.getElementById('gh-info-repo').textContent = ghConfig.repo || '—';
+  document.getElementById('gh-info-path').textContent = ghConfig.path || 'presets.json';
+  document.getElementById('gh-info-repo-right').textContent = ghConfig.repo || '—';
+  document.getElementById('gh-info-path-right').textContent = ghConfig.path || 'presets.json';
+}
+function toggleTokenVis() { const i = document.getElementById('gh-token-input'), eye = document.getElementById('tok-eye'); if (i.type === 'password') { i.type = 'text'; eye.textContent = '🙈'; } else { i.type = 'password'; eye.textContent = '👁'; } }
+function toggleTokenVisRight() { const i = document.getElementById('gh-token-input-right'), eye = document.getElementById('tok-eye-right'); if (i.type === 'password') { i.type = 'text'; eye.textContent = '🙈'; } else { i.type = 'password'; eye.textContent = '👁'; } }
+
+async function ghSaveAndConnect() {
+  const token = document.getElementById('gh-token-input').value.trim();
+  const repo = document.getElementById('gh-repo-input').value.trim();
+  const path = document.getElementById('gh-path-input').value.trim() || 'presets.json';
+  if (!token || !repo) { toast('Please enter both token and repository', 'error'); return; }
+  toast('Verifying...', 'info');
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `token ${token}` } });
+    if (!r.ok) { toast('❌ Auth failed — check token and repo', 'error'); return; }
+    ghConfig = { token, repo, path };
+    localStorage.setItem('tc_gh', JSON.stringify(ghConfig));
+    document.getElementById('gh-token-input').value = '';
+    showGhConnected(); toast('✓ GitHub connected!', 'success');
+  } catch (e) { toast('Network error — check connection', 'error'); }
+}
+async function ghSaveAndConnectRight() {
+  const token = document.getElementById('gh-token-input-right').value.trim();
+  const repo = document.getElementById('gh-repo-input-right').value.trim();
+  const path = document.getElementById('gh-path-input-right').value.trim() || 'presets.json';
+  if (!token || !repo) { toast('Please enter both token and repository', 'error'); return; }
+  toast('Verifying...', 'info');
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}`, { headers: { Authorization: `token ${token}` } });
+    if (!r.ok) { toast('❌ Auth failed', 'error'); return; }
+    ghConfig = { token, repo, path };
+    localStorage.setItem('tc_gh', JSON.stringify(ghConfig));
+    document.getElementById('gh-token-input-right').value = '';
+    showGhConnected(); toast('✓ GitHub connected!', 'success');
+  } catch (e) { toast('Network error', 'error'); }
+}
+function ghDisconnect() { showConfirm('Remove GitHub credentials?', 'This will remove your saved GitHub token.', () => { ghConfig = { token: '', repo: '', path: 'presets.json' }; localStorage.removeItem('tc_gh'); showGhSetup(); toast('Credentials cleared', 'info'); }); }
+function ghDisconnectRight() { ghDisconnect(); }
+async function ghGetSHA() {
+  const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${ghConfig.path}`;
+  const get = await fetch(url, { headers: { Authorization: `token ${ghConfig.token}` } });
+  if (!get.ok) return { sha: null, remote: [] };
+  const d = await get.json();
+  let remote = [];
+  try {
+    // GitHub splits base64 across lines — strip all whitespace before decoding
+    const b64 = d.content.replace(/[\s\r\n]/g, '');
+    // Use TextDecoder for robust UTF-8 handling instead of atob+unescape
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const jsonStr = new TextDecoder().decode(bytes);
+    remote = JSON.parse(jsonStr);
+    if (!Array.isArray(remote)) remote = [];
+  } catch (e) {
+    console.error('ghGetSHA parse error:', e);
+  }
+  return { sha: d.sha, remote };
+}
+
+async function ghLoadFromRemote() {
+  if (!ghConfig.token || !ghConfig.repo) { toast('Configure GitHub first', 'error'); return; }
+  toast('Loading from GitHub…', 'info');
+  try {
+    const { remote } = await ghGetSHA();
+    if (!remote.length) { toast('No presets found in GitHub file', 'error'); return; }
+    // Restore any presets that are missing thumbs with a placeholder
+    presets = remote.map(p => ({ ...p, thumb: p.thumb || '' }));
+    renderPresets(); saveLocal();
+    toast(`✓ Loaded ${presets.length} preset(s) from GitHub`, 'success');
+  } catch (e) { toast('Load error: ' + e.message, 'error'); }
+}
+
+async function ghSaveToRemote() {
+  if (!ghConfig.token || !ghConfig.repo) { toast('Configure GitHub first', 'error'); return; }
+  toast('Saving to GitHub…', 'info');
+  try {
+    const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${ghConfig.path}`;
+    const hdrs = { Authorization: `token ${ghConfig.token}`, 'Content-Type': 'application/json' };
+    const { sha } = await ghGetSHA();
+    // Strip thumbs before saving — they are large base64 images that bloat the file
+    // and can push it over GitHub's 1MB API limit. They regenerate locally on save.
+    const saveable = presets.map(({ thumb, ...rest }) => rest);
+    const jsonStr = JSON.stringify(saveable, null, 2);
+    // Use TextEncoder for robust UTF-8 → base64 (handles any Unicode in preset names)
+    const bytes = new TextEncoder().encode(jsonStr);
+    let b64 = '';
+    const chunk = 8192;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    const fileContent = btoa(b64);
+    const body = { message: 'ThumbCraft: save presets', content: fileContent };
+    if (sha) body.sha = sha;
+    const put = await fetch(url, { method: 'PUT', headers: hdrs, body: JSON.stringify(body) });
+    if (put.ok) { toast(`✓ Saved ${presets.length} preset(s) to GitHub`, 'success'); }
+    else {
+      const err = await put.json().catch(() => ({}));
+      toast('Save failed: ' + (err.message || put.status), 'error');
+    }
+  } catch (e) { toast('Save error: ' + e.message, 'error'); }
+}
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportCanvas() {
+  const prev = selected; selected = null; render();
+  const a = document.createElement('a');
+  a.download = 'thumbnail-' + Date.now() + '.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  selected = prev; render();
+  toast('✓ Exported PNG (1280×720)', 'success');
+}
+
+// ─────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────
+function switchTab(name) {
+  const names = ['add', 'layers', 'presets', 'github'];
+  document.querySelectorAll('#left-panel-tabs .panel-tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+  if (name === 'layers') renderLayers();
+  if (name === 'presets') renderPresets();
+}
+function switchRightTab(name) {
+  const names = ['props', 'bg', 'github-right'];
+  document.querySelectorAll('#right-panel-tabs .panel-tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('[id^="right-tab-"]').forEach(c => c.classList.toggle('active', c.id === 'right-tab-' + name));
+  if (name === 'bg') { syncBgColorPickers(); updateBgSliders(); updateBgImageInfo(); }
+  if (name === 'github-right') refreshGhRightPanel();
+}
+
+// ─────────────────────────────────────────────
+// BG OVERLAY & TRANSFORM
+// ─────────────────────────────────────────────
+function setBgOverlay() {
+  bgOverlayColor = document.getElementById('bg-overlay-color').value;
+  bgOverlayOpacity = parseInt(document.getElementById('bg-overlay-opacity').value);
+  document.getElementById('bg-overlay-val').textContent = bgOverlayOpacity;
+  document.getElementById('bg-overlay-color-hex').value = bgOverlayColor;
+  render(); saveLocal();
+}
+function syncOverlayHex(val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) { bgOverlayColor = val; document.getElementById('bg-overlay-color').value = val; render(); saveLocal(); }
+}
+function setBgTransform() {
+  bgZoom = parseFloat(document.getElementById('bg-zoom').value);
+  bgOffsetX = parseFloat(document.getElementById('bg-pos-x').value);
+  bgOffsetY = parseFloat(document.getElementById('bg-pos-y').value);
+  bgRotation = parseFloat(document.getElementById('bg-rotation').value);
+  document.getElementById('bg-zoom-val').textContent = Math.round(bgZoom * 100) + '%';
+  document.getElementById('bg-pos-x-val').textContent = bgOffsetX + 'px';
+  document.getElementById('bg-pos-y-val').textContent = bgOffsetY + 'px';
+  document.getElementById('bg-rotation-val').textContent = bgRotation + '°';
+  render(); saveLocal();
+}
+function resetBgTransform() {
+  bgZoom = 1; bgOffsetX = 0; bgOffsetY = 0; bgRotation = 0;
+  updateBgSliders(); render(); saveLocal();
+}
+function updateBgImageInfo() {
+  const el = document.getElementById('bg-image-info-right');
+  const nameEl = document.getElementById('bg-image-name');
+  if (el) el.style.display = bgImageObj ? 'block' : 'none';
+  if (nameEl && bgImageName) nameEl.textContent = bgImageName;
+  syncBgColorPickers();
+}
+function refreshGhRightPanel() {
+  const hasConfig = ghConfig.token && ghConfig.repo;
+  document.getElementById('gh-setup-view-right').style.display = hasConfig ? 'none' : 'block';
+  document.getElementById('gh-connected-view-right').style.display = hasConfig ? 'block' : 'none';
+  if (hasConfig) { document.getElementById('gh-info-repo-right').textContent = ghConfig.repo; document.getElementById('gh-info-path-right').textContent = ghConfig.path; }
+}
+
+// ─────────────────────────────────────────────
+// PROPERTIES PANEL
+// ─────────────────────────────────────────────
+function updateProps() {
+  const body = document.getElementById('props-body');
+  if (!selected) {
+    body.innerHTML = `<div class="no-selection">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+      Select an element to edit its properties.
+      <div class="shortcut-hint">Double-click text to edit · <span class="kb-hint">Del</span> to remove · <span class="kb-hint">F2</span> rename</div>
+    </div>`;
+    return;
+  }
+  const l = selected;
+  let h = `
+    <div class="prop-row">
+      <div class="prop-label">Name <button onclick="startLayerRename(${l.id})" style="font-size:10px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0" title="F2 to rename">✏️</button></div>
+      <input class="prop-input" value="${esc(l.name)}" oninput="propLive('name',this.value)" onblur="propSave()">
+    </div>`;
+
+  if (l.type === 'text') {
+    h += `
+    <div class="prop-row">
+      <div class="prop-label">Text</div>
+      <textarea class="prop-textarea" oninput="propLive('text',this.value)" onblur="propSave()">${esc(l.text || '')}</textarea>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Font</div>
+      <select class="prop-select" onchange="prop('fontFamily',this.value)">
+        ${['Bebas Neue', 'Impact', 'Arial Black', 'DM Sans', 'Space Mono', 'Georgia', 'Verdana', 'Courier New', 'Tahoma', 'Trebuchet MS'].map(f => `<option value="${f}"${l.fontFamily === f ? ' selected' : ''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="prop-row-2 prop-row">
+      <div><div class="prop-label">Size</div><input class="prop-input" type="number" min="8" max="500" value="${l.fontSize || 72}" oninput="propLive('fontSize',+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      <div><div class="prop-label">Style</div><select class="prop-select" onchange="prop('textStyle',this.value)">
+        ${['normal', 'badge', 'outline'].map(s => `<option value="${s}"${l.textStyle === s ? ' selected' : ''}>${s}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Line Height <span class="slider-val">${(l.lineHeight || 1.2).toFixed(2)}</span></div>
+      <input class="prop-slider" type="range" min="0.8" max="3" step="0.05" value="${l.lineHeight || 1.2}" oninput="propLive('lineHeight',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=(+this.value).toFixed(2)" onchange="propSave()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label" style="margin-bottom:5px">Horizontal Align</div>
+      <div class="prop-row-3">
+        ${['left', 'center', 'right'].map(a => `<button onclick="prop('textAlign','${a}')" style="padding:6px 4px;border-radius:5px;border:1px solid ${(l.textAlign || 'left') === a ? 'var(--accent)' : 'var(--border)'};background:${(l.textAlign || 'left') === a ? 'var(--accent-dim)' : 'var(--surface2)'};cursor:pointer;color:${(l.textAlign || 'left') === a ? 'var(--accent)' : 'var(--muted)'};font-size:11px">${a}</button>`).join('')}
+      </div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Color</div>
+      <div class="prop-color-row">
+        <input class="prop-color" type="color" value="${toHex(l.color || '#fff')}" oninput="prop('color',this.value)">
+        <input class="prop-input" value="${l.color || '#ffffff'}" oninput="prop('color',this.value)" style="flex:1">
+      </div>
+    </div>
+    ${l.textStyle === 'badge' ? `<div class="prop-row"><div class="prop-label">Badge BG Color</div><input class="prop-color" type="color" value="${toHex(l.bgFill || '#f5c518')}" oninput="prop('bgFill',this.value)" style="width:100%;height:32px;padding:2px"></div>` : ''}
+    <div class="prop-row">
+      <div class="prop-label">Outline Width <span class="slider-val">${l.outlineW || 0}px</span></div>
+      <input class="prop-slider" type="range" min="0" max="20" value="${l.outlineW || 0}" oninput="propLive('outlineW',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Outline Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.outlineColor || '#000')}" oninput="prop('outlineColor',this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row" style="display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2)">
+        <input type="checkbox" ${l.shadow ? 'checked' : ''} onchange="prop('shadow',this.checked)" style="accent-color:var(--accent)"> Shadow
+      </label>
+    </div>`;
+  }
+
+  if (l.type === 'rect' || l.type === 'ellipse' || l.type === 'triangle') {
+    const fillAlpha = getAlpha(l.fill);
+    const strokeAlpha = getAlpha(l.stroke);
+    h += `
+    <div class="prop-row">
+      <div class="prop-label">Fill Color</div>
+      <div class="prop-color-row">
+        <input class="prop-color" type="color" value="${toHex(l.fill || '#f5c518')}" oninput="setFillColor(this.value)">
+        <input class="prop-input" value="${toHex(l.fill || '#f5c518')}" oninput="setFillColor(this.value)" style="flex:1">
+      </div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Fill Alpha <span class="slider-val">${Math.round(fillAlpha * 100)}%</span></div>
+      <input class="prop-slider" type="range" min="0" max="100" value="${Math.round(fillAlpha * 100)}" oninput="setFillAlphaLive(+this.value/100);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'%'" onchange="propSave()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Stroke Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.stroke || '#ffffff')}" oninput="setStrokeColor(this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Stroke Width <span class="slider-val">${l.strokeW || 0}px</span></div>
+      <input class="prop-slider" type="range" min="0" max="30" value="${l.strokeW || 0}" oninput="propLive('strokeW',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>
+    ${l.type === 'rect' ? `<div class="prop-row"><div class="prop-label">Corner Radius <span class="slider-val">${l.radius || 0}px</span></div><input class="prop-slider" type="range" min="0" max="80" value="${l.radius || 0}" oninput="propLive('radius',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'px'" onchange="propSave()"></div>` : ''}
+    <div class="prop-row">
+      <div class="prop-label">Size <button onclick="toggleUniformScale()" title="${l.uniformScale ? 'Unlock ratio' : 'Lock ratio'}" style="font-size:13px;background:none;border:none;cursor:pointer;color:${l.uniformScale ? 'var(--accent)' : 'var(--muted)'};padding:0">${l.uniformScale ? '🔗' : '⛓️'}</button></div>
+      <div class="prop-row-2">
+        <div><div class="prop-label">W</div><input class="prop-input" type="number" value="${Math.round(l.w || 200)}" oninput="propWLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+        <div><div class="prop-label">H</div><input class="prop-input" type="number" value="${Math.round(l.h || 100)}" oninput="propHLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      </div>
+    </div>`;
+  }
+
+  if (l.type === 'line') {
+    const strokeAlpha = getAlpha(l.stroke);
+    h += `
+    <div class="prop-row">
+      <div class="prop-label">Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.stroke || '#f5c518')}" oninput="setStrokeColor(this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Alpha <span class="slider-val">${Math.round(strokeAlpha * 100)}%</span></div>
+      <input class="prop-slider" type="range" min="0" max="100" value="${Math.round(strokeAlpha * 100)}" oninput="setStrokeAlphaLive(+this.value/100);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'%'" onchange="propSave()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Thickness <span class="slider-val">${l.strokeW || 4}px</span></div>
+      <input class="prop-slider" type="range" min="1" max="40" value="${l.strokeW || 4}" oninput="propLive('strokeW',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>
+    <div class="prop-row-2 prop-row">
+      <div><div class="prop-label">X2</div><input class="prop-input" type="number" value="${l.x2 || 500}" oninput="propLive('x2',+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      <div><div class="prop-label">Y2</div><input class="prop-input" type="number" value="${l.y2 || 350}" oninput="propLive('y2',+this.value)" onblur="propSave()" inputmode="numeric"></div>
+    </div>`;
+  }
+
+  if (l.type === 'image') {
+    h += `
+    <div class="prop-row">
+      <div class="prop-label">Size <button onclick="toggleUniformScale()" title="${l.uniformScale ? 'Unlock ratio' : 'Lock ratio'}" style="font-size:13px;background:none;border:none;cursor:pointer;color:${l.uniformScale ? 'var(--accent)' : 'var(--muted)'};padding:0">${l.uniformScale ? '🔗' : '⛓️'}</button></div>
+      <div class="prop-row-2">
+        <div><div class="prop-label">W</div><input class="prop-input" type="number" value="${Math.round(l.w || 200)}" oninput="propWLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+        <div><div class="prop-label">H</div><input class="prop-input" type="number" value="${Math.round(l.h || 150)}" oninput="propHLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      </div>
+    </div>`;
+  }
+
+  // Common: Position + Rotation + Opacity + Align
+  h += `
+    <hr class="section-divider">
+    <div class="props-section-title">Position & Transform</div>
+    <div class="prop-row-2 prop-row">
+      <div><div class="prop-label">X</div><input class="prop-input" type="number" value="${Math.round(l.x)}" oninput="propLive('x',+this.value)" onblur="propSave()" inputmode="numeric" ${l.locked ? 'disabled' : ''}></div>
+      <div><div class="prop-label">Y</div><input class="prop-input" type="number" value="${Math.round(l.y)}" oninput="propLive('y',+this.value)" onblur="propSave()" inputmode="numeric" ${l.locked ? 'disabled' : ''}></div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Rotation <span class="slider-val">${l.rotation || 0}°</span></div>
+      <input class="prop-slider" type="range" min="-180" max="180" value="${l.rotation || 0}" oninput="propLive('rotation',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'°'" onchange="propSave()" ${l.locked ? 'disabled' : ''}>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Opacity <span class="slider-val">${l.opacity ?? 100}%</span></div>
+      <input class="prop-slider" type="range" min="0" max="100" value="${l.opacity ?? 100}" oninput="propLive('opacity',+this.value);this.previousElementSibling.querySelector('.slider-val').textContent=this.value+'%'" onchange="propSave()">
+    </div>
+    <hr class="section-divider">
+    <div class="props-section-title">Align to Canvas</div>
+    <div class="align-bar">
+      <button class="align-btn" onclick="alignLayer('left')" title="Align left edge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12"/><rect x="4" y="5" width="8" height="6" rx="1"/></svg>
+      </button>
+      <button class="align-btn" onclick="alignLayer('center')" title="Center horizontal">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12"/><rect x="3" y="5" width="10" height="6" rx="1"/></svg>
+      </button>
+      <button class="align-btn" onclick="alignLayer('right')" title="Align right edge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2v12"/><rect x="4" y="5" width="8" height="6" rx="1"/></svg>
+      </button>
+      <button class="align-btn" onclick="alignLayer('top')" title="Align top edge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12"/><rect x="5" y="4" width="6" height="8" rx="1"/></svg>
+      </button>
+      <button class="align-btn" onclick="alignLayer('middle')" title="Center vertical">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12"/><rect x="5" y="3" width="6" height="10" rx="1"/></svg>
+      </button>
+      <button class="align-btn" onclick="alignLayer('bottom')" title="Align bottom edge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14h12"/><rect x="5" y="4" width="6" height="8" rx="1"/></svg>
+      </button>
+    </div>
+    <hr class="section-divider">
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button class="btn ${l.locked ? 'btn-primary' : 'btn-ghost'}" style="flex:1;justify-content:center;font-size:11.5px" onclick="toggleLock(${l.id});selectLayer(selected)">${l.locked ? '🔒 Locked' : '🔓 Lock'}</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11.5px" onclick="duplicateSelected()" ${l.locked ? 'disabled' : ''}>⧉ Dupe</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑</button>
+    </div>`;
+
+  body.innerHTML = h;
+}
+
+// ─────────────────────────────────────────────
+// PROP HELPERS
+// ─────────────────────────────────────────────
+function prop(k, v) { if (!selected) return; selected[k] = v; render(); updateProps(); captureState(); saveLocal(); }
+function propLive(k, v) { if (!selected) return; selected[k] = v; render(); saveLocal(); }
+function propSave() { captureState(); saveLocal(); updateProps(); }
+
+function toHex(color) {
+  if (!color) return '#000000';
+  if (color.startsWith('#')) return color.slice(0, 7);
+  if (color.startsWith('rgb')) {
+    const m = color.match(/[\d.]+/g);
+    if (!m) return '#000000';
+    return '#' + [m[0], m[1], m[2]].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+  }
+  return '#000000';
+}
+function getAlpha(color) {
+  if (!color) return 1;
+  if (color.startsWith('rgba')) { const m = color.match(/[\d.]+/g); return m && m[3] !== undefined ? parseFloat(m[3]) : 1; }
+  if (color.startsWith('#') && color.length === 9) return parseInt(color.slice(7, 9), 16) / 255;
+  return 1;
+}
+function colorWithAlpha(hex, alpha) {
+  const h = toHex(hex);
+  const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
+  return alpha >= 1 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+}
+function setFillColor(hex) { if (!selected) return; selected.fill = colorWithAlpha(hex, getAlpha(selected.fill)); render(); saveLocal(); }
+function setFillAlphaLive(a) { if (!selected) return; selected.fill = colorWithAlpha(selected.fill || '#f5c518', a); render(); }
+function setStrokeColor(hex) { if (!selected) return; selected.stroke = colorWithAlpha(hex, getAlpha(selected.stroke)); render(); saveLocal(); }
+function setStrokeAlphaLive(a) { if (!selected) return; selected.stroke = colorWithAlpha(selected.stroke || '#ffffff', a); render(); }
+
+function toggleUniformScale() {
+  if (!selected) return;
+  selected.uniformScale = !selected.uniformScale;
+  updateProps(); saveLocal();
+  toast(selected.uniformScale ? '🔗 Ratio locked' : 'Ratio unlocked', 'info');
+}
+function propW(v) { if (!selected) return; if (selected.uniformScale && selected.w && selected.h) { const ratio = selected.h / selected.w; selected.w = Math.max(1, v); selected.h = Math.max(1, Math.round(v * ratio)); } else { selected.w = Math.max(1, v); } render(); captureState(); saveLocal(); updateProps(); }
+function propWLive(v) { if (!selected) return; if (selected.uniformScale && selected.w && selected.h) { const ratio = selected.h / selected.w; selected.w = Math.max(1, v); selected.h = Math.max(1, Math.round(v * ratio)); } else { selected.w = Math.max(1, v); } render(); }
+function propH(v) { if (!selected) return; if (selected.uniformScale && selected.w && selected.h) { const ratio = selected.w / selected.h; selected.h = Math.max(1, v); selected.w = Math.max(1, Math.round(v * ratio)); } else { selected.h = Math.max(1, v); } render(); captureState(); saveLocal(); updateProps(); }
+function propHLive(v) { if (!selected) return; if (selected.uniformScale && selected.w && selected.h) { const ratio = selected.w / selected.h; selected.h = Math.max(1, v); selected.w = Math.max(1, Math.round(v * ratio)); } else { selected.h = Math.max(1, v); } render(); }
+
+function duplicateSelected() {
+  if (!selected) return;
+  const c = { ...selected, id: nextId++, name: selected.name + ' copy', x: selected.x + 20, y: selected.y + 20 };
+  if (c.type === 'image') c.imgObj = selected.imgObj;
+  layers.unshift(c); selectLayer(c); render(); renderLayers(); captureState(); saveLocal();
+  toast('Layer duplicated', 'info');
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let toastTimer = null;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' ' + type : '') + ' show';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─────────────────────────────────────────────
+// UTILITY
+// ─────────────────────────────────────────────
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+// ─────────────────────────────────────────────
+// MOBILE DRAWER
+// ─────────────────────────────────────────────
+let currentDrawer = null;
+const drawerTitles = { add: 'Add Elements', layers: 'Layers', presets: 'Presets', props: 'Properties', bg: 'Background', github: 'GitHub Sync' };
+
+function openDrawer(name) {
+  currentDrawer = name;
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mnav-' + name);
+  if (btn) btn.classList.add('active');
+  document.getElementById('drawer-title').textContent = drawerTitles[name] || name;
+  document.getElementById('drawer-body').innerHTML = getDrawerContent(name);
+  document.getElementById('mobile-drawer').classList.add('open');
+  document.getElementById('drawer-backdrop').classList.add('open');
+  if (name === 'presets') renderMobilePresets();
+  if (name === 'layers') renderMobileLayers();
+}
+function closeDrawer() {
+  currentDrawer = null;
+  document.getElementById('mobile-drawer').classList.remove('open');
+  document.getElementById('drawer-backdrop').classList.remove('open');
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function getDrawerContent(name) {
+  if (name === 'add') return getMobileAddHTML();
+  if (name === 'layers') return `<div class="layers-list" id="mobile-layers-list"></div><div id="mobile-no-layers" style="display:none;color:var(--muted);font-size:12px;text-align:center;padding:20px 0">No layers yet.<br>Add elements from Add tab.</div>`;
+  if (name === 'presets') return `<div class="import-export-bar"><button class="btn btn-ghost btn-sm" style="justify-content:center" onclick="importPresetsFile()">📥 Import JSON</button><button class="btn btn-ghost btn-sm" style="justify-content:center" onclick="exportPresetsFile()">📤 Export JSON</button></div><div class="panel-label" style="margin-bottom:8px">Saved Presets</div><div class="preset-grid" id="mobile-preset-grid"></div><div id="mobile-no-presets" style="display:none;color:var(--muted);font-size:12px;text-align:center;padding:24px 0">No presets yet.<br>Build a thumbnail and tap 💾 Save!</div>`;
+  if (name === 'props') return getMobilePropsHTML();
+  if (name === 'bg') return getMobileBgHTML();
+  if (name === 'github') return getMobileGithubHTML();
+  return '';
+}
+
+function getMobileAddHTML() {
+  return `
+  <div class="panel-section">
+    <div class="panel-label">Shapes &amp; Media</div>
+    <div class="add-grid">
+      <div class="add-btn" onclick="addText();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>Text</div>
+      <div class="add-btn" onclick="addRect();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="1"/></svg>Rectangle</div>
+      <div class="add-btn" onclick="addEllipse();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="6"/></svg>Ellipse</div>
+      <div class="add-btn" onclick="addTriangle();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,4 22,20 2,20"/></svg>Triangle</div>
+      <div class="add-btn" onclick="addLine();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20L20 4"/></svg>Line</div>
+      <div class="add-btn" onclick="triggerImageUpload();closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>Image</div>
+    </div>
+  </div>
+  <div class="panel-section">
+    <div class="panel-label">Quick Styles</div>
+    <div class="add-grid">
+      <div class="add-btn" onclick="addStyledText('title');closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h8"/></svg>Big Title</div>
+      <div class="add-btn" onclick="addStyledText('subtitle');closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h12M4 18h8"/></svg>Subtitle</div>
+      <div class="add-btn" onclick="addStyledText('badge');closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="5"/></svg>Badge</div>
+      <div class="add-btn" onclick="addStyledText('outline');closeDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>Outline</div>
+    </div>
+  </div>
+  <div class="panel-section">
+    <div class="panel-label">Canvas Background</div>
+    <div class="prop-row">
+      <div class="prop-label">BG Color</div>
+      <input class="prop-input" type="color" value="${bgColor}" oninput="setBgColor(this.value)" style="height:34px;padding:2px">
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:5px" onclick="triggerBgUpload();closeDrawer()">
+      <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M1 11l4-3 3 3 2-2 5 4"/></svg> Upload BG Image
+    </button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="clearBg();closeDrawer()">
+      <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg> Remove BG Image
+    </button>
+  </div>`;
+}
+
+function getMobilePropsHTML() {
+  if (!selected) {
+    return `<div class="no-selection" style="padding-top:40px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;opacity:.25"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+      <div style="margin-top:12px;color:var(--muted);font-size:13px;text-align:center">Select an element on the canvas,<br>then tap Props to edit it.</div>
+    </div>`;
+  }
+  const l = selected;
+  let h = `<div class="prop-row"><div class="prop-label">Name</div><input class="prop-input" value="${esc(l.name)}" oninput="propLive('name',this.value)" onblur="propSave()"></div>`;
+
+  if (l.type === 'text') {
+    h += `
+    <div class="prop-row"><div class="prop-label">Text</div><textarea class="prop-textarea" oninput="propLive('text',this.value)" onblur="propSave()">${esc(l.text || '')}</textarea></div>
+    <div class="prop-row"><div class="prop-label">Font</div><select class="prop-select" onchange="prop('fontFamily',this.value)">
+      ${['Bebas Neue','Impact','Arial Black','DM Sans','Space Mono','Georgia','Verdana','Courier New','Tahoma','Trebuchet MS'].map(f=>`<option value="${f}"${l.fontFamily===f?' selected':''}>${f}</option>`).join('')}
+    </select></div>
+    <div class="prop-row-2 prop-row">
+      <div><div class="prop-label">Size</div><input class="prop-input" type="number" min="8" max="500" value="${l.fontSize||72}" oninput="propLive('fontSize',+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      <div><div class="prop-label">Style</div><select class="prop-select" onchange="prop('textStyle',this.value)">
+        ${['normal','badge','outline'].map(s=>`<option value="${s}"${l.textStyle===s?' selected':''}>${s}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Line Height <span class="slider-val" id="mob-lh-val">${(l.lineHeight||1.2).toFixed(2)}</span></div>
+      <input class="prop-slider" type="range" min="0.8" max="3" step="0.05" value="${l.lineHeight||1.2}" oninput="propLive('lineHeight',+this.value);document.getElementById('mob-lh-val').textContent=(+this.value).toFixed(2)" onchange="propSave()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label" style="margin-bottom:5px">Align</div>
+      <div class="prop-row-3">
+        ${['left','center','right'].map(a=>`<button onclick="prop('textAlign','${a}')" style="padding:6px 4px;border-radius:5px;border:1px solid ${(l.textAlign||'left')===a?'var(--accent)':'var(--border)'};background:${(l.textAlign||'left')===a?'var(--accent-dim)':'var(--surface2)'};cursor:pointer;color:${(l.textAlign||'left')===a?'var(--accent)':'var(--muted)'};font-size:11px">${a}</button>`).join('')}
+      </div>
+    </div>
+    <div class="prop-row"><div class="prop-label">Color</div>
+      <div class="prop-color-row">
+        <input class="prop-color" type="color" value="${toHex(l.color||'#fff')}" oninput="prop('color',this.value)">
+        <input class="prop-input" value="${l.color||'#ffffff'}" oninput="prop('color',this.value)" style="flex:1">
+      </div>
+    </div>
+    ${l.textStyle==='badge'?`<div class="prop-row"><div class="prop-label">Badge BG</div><input class="prop-color" type="color" value="${toHex(l.bgFill||'#f5c518')}" oninput="prop('bgFill',this.value)" style="width:100%;height:32px;padding:2px"></div>`:''}
+    <div class="prop-row">
+      <div class="prop-label">Outline Width <span class="slider-val" id="mob-ow-val">${l.outlineW||0}px</span></div>
+      <input class="prop-slider" type="range" min="0" max="20" value="${l.outlineW||0}" oninput="propLive('outlineW',+this.value);document.getElementById('mob-ow-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>
+    <div class="prop-row"><div class="prop-label">Outline Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.outlineColor||'#000')}" oninput="prop('outlineColor',this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row" style="display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2)">
+        <input type="checkbox" ${l.shadow?'checked':''} onchange="prop('shadow',this.checked)" style="accent-color:var(--accent)"> Shadow
+      </label>
+    </div>`;
+  }
+
+  if (l.type==='rect'||l.type==='ellipse'||l.type==='triangle') {
+    const fillAlpha = getAlpha(l.fill);
+    h += `
+    <div class="prop-row"><div class="prop-label">Fill Color</div>
+      <div class="prop-color-row">
+        <input class="prop-color" type="color" value="${toHex(l.fill||'#f5c518')}" oninput="setFillColor(this.value)">
+        <input class="prop-input" value="${toHex(l.fill||'#f5c518')}" oninput="setFillColor(this.value)" style="flex:1">
+      </div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Fill Alpha <span class="slider-val" id="mob-fa-val">${Math.round(fillAlpha*100)}%</span></div>
+      <input class="prop-slider" type="range" min="0" max="100" value="${Math.round(fillAlpha*100)}" oninput="setFillAlphaLive(+this.value/100);document.getElementById('mob-fa-val').textContent=this.value+'%'" onchange="propSave()">
+    </div>
+    <div class="prop-row"><div class="prop-label">Stroke Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.stroke||'#fff')}" oninput="setStrokeColor(this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Stroke Width <span class="slider-val" id="mob-sw-val">${l.strokeW||0}px</span></div>
+      <input class="prop-slider" type="range" min="0" max="30" value="${l.strokeW||0}" oninput="propLive('strokeW',+this.value);document.getElementById('mob-sw-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>
+    ${l.type==='rect'?`<div class="prop-row"><div class="prop-label">Corner Radius <span class="slider-val" id="mob-cr-val">${l.radius||0}px</span></div><input class="prop-slider" type="range" min="0" max="80" value="${l.radius||0}" oninput="propLive('radius',+this.value);document.getElementById('mob-cr-val').textContent=this.value+'px'" onchange="propSave()"></div>`:''}
+    <div class="prop-row"><div class="prop-label">Size <button onclick="toggleUniformScale()" style="font-size:13px;background:none;border:none;cursor:pointer;color:${l.uniformScale?'var(--accent)':'var(--muted)'};padding:0">${l.uniformScale?'🔗':'⛓️'}</button></div>
+      <div class="prop-row-2">
+        <div><div class="prop-label">W</div><input class="prop-input" type="number" value="${Math.round(l.w||200)}" oninput="propWLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+        <div><div class="prop-label">H</div><input class="prop-input" type="number" value="${Math.round(l.h||100)}" oninput="propHLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      </div>
+    </div>`;
+  }
+
+  if (l.type==='line') {
+    const strokeAlpha=getAlpha(l.stroke);
+    h+=`
+    <div class="prop-row"><div class="prop-label">Color</div>
+      <input class="prop-color" type="color" value="${toHex(l.stroke||'#f5c518')}" oninput="setStrokeColor(this.value)" style="width:100%;height:32px;padding:2px">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Thickness <span class="slider-val" id="mob-lt-val">${l.strokeW||4}px</span></div>
+      <input class="prop-slider" type="range" min="1" max="40" value="${l.strokeW||4}" oninput="propLive('strokeW',+this.value);document.getElementById('mob-lt-val').textContent=this.value+'px'" onchange="propSave()">
+    </div>`;
+  }
+
+  if (l.type==='image') {
+    h+=`<div class="prop-row"><div class="prop-label">Size <button onclick="toggleUniformScale()" style="font-size:13px;background:none;border:none;cursor:pointer;color:${l.uniformScale?'var(--accent)':'var(--muted)'};padding:0">${l.uniformScale?'🔗':'⛓️'}</button></div>
+      <div class="prop-row-2">
+        <div><div class="prop-label">W</div><input class="prop-input" type="number" value="${Math.round(l.w||200)}" oninput="propWLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+        <div><div class="prop-label">H</div><input class="prop-input" type="number" value="${Math.round(l.h||150)}" oninput="propHLive(+this.value)" onblur="propSave()" inputmode="numeric"></div>
+      </div>
+    </div>`;
+  }
+
+  h+=`
+  <hr class="section-divider">
+  <div class="props-section-title">Position &amp; Transform</div>
+  <div class="prop-row-2 prop-row">
+    <div><div class="prop-label">X</div><input class="prop-input" type="number" value="${Math.round(l.x)}" oninput="propLive('x',+this.value)" onblur="propSave()" inputmode="numeric" ${l.locked?'disabled':''}></div>
+    <div><div class="prop-label">Y</div><input class="prop-input" type="number" value="${Math.round(l.y)}" oninput="propLive('y',+this.value)" onblur="propSave()" inputmode="numeric" ${l.locked?'disabled':''}></div>
+  </div>
+  <div class="prop-row">
+    <div class="prop-label">Rotation <span class="slider-val" id="mob-rot-val">${l.rotation||0}°</span></div>
+    <input class="prop-slider" type="range" min="-180" max="180" value="${l.rotation||0}" oninput="propLive('rotation',+this.value);document.getElementById('mob-rot-val').textContent=this.value+'°'" onchange="propSave()" ${l.locked?'disabled':''}>
+  </div>
+  <div class="prop-row">
+    <div class="prop-label">Opacity <span class="slider-val" id="mob-op-val">${l.opacity??100}%</span></div>
+    <input class="prop-slider" type="range" min="0" max="100" value="${l.opacity??100}" oninput="propLive('opacity',+this.value);document.getElementById('mob-op-val').textContent=this.value+'%'" onchange="propSave()">
+  </div>
+  <hr class="section-divider">
+  <div class="props-section-title">Align to Canvas</div>
+  <div class="align-bar">
+    <button class="align-btn" onclick="alignLayer('left')" title="Left"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12"/><rect x="4" y="5" width="8" height="6" rx="1"/></svg></button>
+    <button class="align-btn" onclick="alignLayer('center')" title="H Center"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12"/><rect x="3" y="5" width="10" height="6" rx="1"/></svg></button>
+    <button class="align-btn" onclick="alignLayer('right')" title="Right"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2v12"/><rect x="4" y="5" width="8" height="6" rx="1"/></svg></button>
+    <button class="align-btn" onclick="alignLayer('top')" title="Top"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12"/><rect x="5" y="4" width="6" height="8" rx="1"/></svg></button>
+    <button class="align-btn" onclick="alignLayer('middle')" title="V Center"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12"/><rect x="5" y="3" width="6" height="10" rx="1"/></svg></button>
+    <button class="align-btn" onclick="alignLayer('bottom')" title="Bottom"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14h12"/><rect x="5" y="4" width="6" height="8" rx="1"/></svg></button>
+  </div>
+  <hr class="section-divider">
+  <div style="display:flex;gap:5px;flex-wrap:wrap">
+    <button class="btn ${l.locked?'btn-primary':'btn-ghost'}" style="flex:1;justify-content:center;font-size:11.5px" onclick="toggleLock(${l.id});openDrawer('props')">${l.locked?'🔒 Locked':'🔓 Lock'}</button>
+    <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11.5px" onclick="duplicateSelected();openDrawer('props')" ${l.locked?'disabled':''}>⧉ Dupe</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteSelected();closeDrawer()">🗑 Del</button>
+  </div>`;
+  return h;
+}
+
+function getMobileBgHTML() {
+  return `
+  <div class="panel-section">
+    <div class="panel-label">Canvas Background</div>
+    <div class="prop-row"><div class="prop-label">BG Color</div>
+      <input class="prop-input" type="color" value="${bgColor}" oninput="setBgColor(this.value)" style="height:34px;padding:2px">
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:5px" onclick="triggerBgUpload();closeDrawer()">
+      <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M1 11l4-3 3 3 2-2 5 4"/></svg> Upload BG Image
+    </button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="clearBg();closeDrawer()">
+      <svg viewBox="0 0 16 16" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg> Remove BG Image
+    </button>
+  </div>
+  <hr class="section-divider">
+  <div class="panel-section">
+    <div class="panel-label">BG Overlay</div>
+    <div class="prop-row"><div class="prop-label">Overlay Color</div>
+      <div class="prop-color-row">
+        <input type="color" class="prop-color" value="${bgOverlayColor}" oninput="bgOverlayColor=this.value;render();saveLocal()">
+        <input class="prop-input" value="${bgOverlayColor}" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){bgOverlayColor=this.value;render();saveLocal()}" style="flex:1">
+      </div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Overlay Opacity <span class="slider-val" id="mob-bg-ov-val">${bgOverlayOpacity}%</span></div>
+      <input class="prop-slider" type="range" min="0" max="100" value="${bgOverlayOpacity}" oninput="bgOverlayOpacity=+this.value;document.getElementById('mob-bg-ov-val').textContent=this.value+'%';render();saveLocal()">
+    </div>
+  </div>
+  <hr class="section-divider">
+  <div class="panel-section">
+    <div class="panel-label">BG Transform
+      <span onclick="resetBgTransform()" style="font-size:10px;color:var(--muted);cursor:pointer;font-weight:500;text-transform:none;letter-spacing:0">↺ Reset</span>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Zoom <span class="slider-val" id="mob-bg-z-val">${Math.round(bgZoom*100)}%</span></div>
+      <input class="prop-slider" type="range" min="0.5" max="3" step="0.01" value="${bgZoom}" oninput="bgZoom=+this.value;document.getElementById('mob-bg-z-val').textContent=Math.round(+this.value*100)+'%';render();saveLocal()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Position X <span class="slider-val" id="mob-bg-x-val">${bgOffsetX}px</span></div>
+      <input class="prop-slider" type="range" min="-640" max="640" step="1" value="${bgOffsetX}" oninput="bgOffsetX=+this.value;document.getElementById('mob-bg-x-val').textContent=this.value+'px';render();saveLocal()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Position Y <span class="slider-val" id="mob-bg-y-val">${bgOffsetY}px</span></div>
+      <input class="prop-slider" type="range" min="-360" max="360" step="1" value="${bgOffsetY}" oninput="bgOffsetY=+this.value;document.getElementById('mob-bg-y-val').textContent=this.value+'px';render();saveLocal()">
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Rotation <span class="slider-val" id="mob-bg-r-val">${bgRotation}°</span></div>
+      <input class="prop-slider" type="range" min="-180" max="180" step="1" value="${bgRotation}" oninput="bgRotation=+this.value;document.getElementById('mob-bg-r-val').textContent=this.value+'°';render();saveLocal()">
+    </div>
+  </div>`;
+}
+
+function getMobileGithubHTML() {
+  const connected = ghConfig.token && ghConfig.repo;
+  if (!connected) {
+    return `
+    <div class="panel-label">🔐 GitHub Sync</div>
+    <div class="prop-row"><div class="prop-label">Personal Access Token</div>
+      <div style="position:relative">
+        <input class="prop-input" type="password" id="mob-gh-token" placeholder="ghp_xxxxxxxxxxxx" style="padding-right:34px">
+        <span onclick="var i=document.getElementById('mob-gh-token');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;color:var(--muted)">👁</span>
+      </div>
+    </div>
+    <div class="prop-row"><div class="prop-label">Repository</div>
+      <input class="prop-input" type="text" id="mob-gh-repo" placeholder="username/my-thumbnails" value="${ghConfig.repo||''}">
+    </div>
+    <div class="prop-row"><div class="prop-label">JSON File Path</div>
+      <input class="prop-input" type="text" id="mob-gh-path" placeholder="presets.json" value="${ghConfig.path||'presets.json'}">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="ghSaveAndConnectMobile()">Save &amp; Connect</button>
+    <div style="font-size:11px;color:var(--muted);line-height:1.8;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      GitHub → Settings → Developer settings<br>→ Personal access tokens → Classic<br>
+      Check <code style="color:var(--accent)">repo</code> scope, generate, paste above.
+    </div>`;
+  }
+  return `
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div class="status-dot ok"></div>
+    <span style="font-size:13px;font-weight:600;color:var(--success)">Connected</span>
+  </div>
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;margin-bottom:12px">
+    <div style="color:var(--muted);margin-bottom:3px">Repository</div>
+    <div style="font-weight:600;color:var(--text)">${esc(ghConfig.repo)}</div>
+    <div style="color:var(--muted);margin-top:8px;margin-bottom:3px">File</div>
+    <div style="font-weight:600;color:var(--text)">${esc(ghConfig.path)}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px">
+    <button class="btn btn-ghost" style="justify-content:center" onclick="ghLoadFromRemote()">⬇ Load</button>
+    <button class="btn btn-primary" style="justify-content:center" onclick="ghSaveToRemote()">⬆ Save</button>
+  </div>
+  <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="ghDisconnect();openDrawer('github')">🔓 Change Credentials</button>`;
+}
+
+async function ghSaveAndConnectMobile() {
+  const token = (document.getElementById('mob-gh-token')||{}).value||'';
+  const repo = (document.getElementById('mob-gh-repo')||{}).value||'';
+  const path = (document.getElementById('mob-gh-path')||{}).value||'presets.json';
+  if (!token||!repo) { toast('Please enter both token and repository','error'); return; }
+  toast('Verifying...','info');
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}`,{headers:{Authorization:`token ${token}`}});
+    if (!r.ok) { toast('❌ Auth failed','error'); return; }
+    ghConfig={token,repo,path};
+    localStorage.setItem('tc_gh',JSON.stringify(ghConfig));
+    toast('✓ GitHub connected!','success');
+    openDrawer('github');
+  } catch(e) { toast('Network error','error'); }
+}
+
+function renderMobileLayers() {
+  const list = document.getElementById('mobile-layers-list');
+  const none = document.getElementById('mobile-no-layers');
+  if (!list) return;
+  const icons = { text: 'T', rect: '▭', ellipse: '◯', triangle: '△', line: '╱', image: '🖼' };
+  none.style.display = layers.length ? 'none' : 'block';
+  list.innerHTML = layers.map(l => `<div class="layer-item${selected && selected.id === l.id ? ' selected' : ''}" onclick="selectLayerById(${l.id});openDrawer('props')">
+    <span class="layer-icon" style="opacity:${l.visible?1:0.35}">${icons[l.type] || '◆'}</span>
+    <span class="layer-name" style="opacity:${l.visible?1:0.4}">${esc(l.name)}</span>
+    <div class="layer-actions">
+      <button class="layer-btn accent" onclick="event.stopPropagation();moveLayerUp(${l.id});renderMobileLayers()">▲</button>
+      <button class="layer-btn accent" onclick="event.stopPropagation();moveLayerDown(${l.id});renderMobileLayers()">▼</button>
+      <button class="layer-btn" onclick="event.stopPropagation();toggleVis(${l.id});renderMobileLayers()">${l.visible ? '👁' : '🚫'}</button>
+      <button class="layer-btn" onclick="event.stopPropagation();toggleLock(${l.id});renderMobileLayers()">${l.locked?'🔒':'🔓'}</button>
+      <button class="layer-btn danger" onclick="event.stopPropagation();deleteLayerById(${l.id});renderMobileLayers()">✕</button>
+    </div>
+  </div>`).join('');
+}
+function renderMobilePresets() {
+  const grid = document.getElementById('mobile-preset-grid');
+  const none = document.getElementById('mobile-no-presets');
+  if (!grid) return;
+  none.style.display = presets.length ? 'none' : 'block';
+  grid.innerHTML = presets.map(p => `<div class="preset-card" onclick="loadPreset(${p.id});closeDrawer()">
+    <div class="preset-thumb" style="background-image:url('${p.thumb}')"></div>
+    <div class="preset-name">${esc(p.name)}</div>
+    <button class="preset-del-btn" onclick="event.stopPropagation();confirmDeletePreset(${p.id});renderMobilePresets()" title="Delete">✕</button>
+  </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+init();
+setTimeout(zoomFit, 50);
+// Activate snap button style on both desktop and mobile
+setTimeout(() => {
+  const btn = document.getElementById('snap-btn');
+  const mBtn = document.getElementById('mobile-snap-btn');
+  if (btn && snapEnabled) { btn.style.color = 'var(--accent)'; btn.title = 'Snap: ON'; }
+  if (mBtn && snapEnabled) { mBtn.style.color = 'var(--accent)'; }
+}, 100);
+</script>
+</body>
+</html>
