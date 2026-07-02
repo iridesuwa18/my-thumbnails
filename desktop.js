@@ -51,14 +51,14 @@ TC.on('history', ({ canUndo, canRedo }) => {
 // ── LAYERS LIST ───────────────────────────────────────────────
 const ICONS = { text: 'T', rect: '▭', ellipse: '◯', triangle: '△', line: '╱', image: '🖼' };
 let renamingId = null;
-function renderLayersList() {
+function renderLayersList(force) {
   const list = document.getElementById('layers-list');
   const none = document.getElementById('no-layers');
   const layers = TC.getLayers(), sel = TC.getSelected();
   document.getElementById('layer-count').textContent = layers.length ? `(${layers.length})` : '';
   document.getElementById('del-selected-btn').style.display = sel ? 'inline-flex' : 'none';
   none.style.display = layers.length ? 'none' : 'block';
-  if (renamingId !== null && layers.some(l => l.id === renamingId)) return; // don't blow away the active rename input
+  if (!force && renamingId !== null && layers.some(l => l.id === renamingId)) return; // don't blow away the active rename input
   list.innerHTML = layers.map(l => `
     <div class="layer-item${sel && sel.id === l.id ? ' selected' : ''}" onclick="TC.selectLayer(${l.id})">
       <span class="layer-icon" style="opacity:${l.visible ? 1 : .35}">${ICONS[l.type] || '◆'}</span>
@@ -68,14 +68,14 @@ function renderLayersList() {
       <div class="layer-actions">
         <button class="layer-btn accent" title="Up" onclick="event.stopPropagation();TC.moveLayerUp(${l.id})">▲</button>
         <button class="layer-btn accent" title="Down" onclick="event.stopPropagation();TC.moveLayerDown(${l.id})">▼</button>
-        <button class="layer-btn" title="Rename" onclick="event.stopPropagation();startRename(${l.id})">✏️</button>
+        <button class="layer-btn" title="Duplicate (Ctrl+D)" onclick="event.stopPropagation();TC.duplicateLayer(${l.id})">📋</button>
         <button class="layer-btn" title="Visibility" onclick="event.stopPropagation();TC.toggleVisibility(${l.id})">${l.visible ? '👁' : '🚫'}</button>
         <button class="layer-btn" title="Lock" onclick="event.stopPropagation();TC.toggleLock(${l.id})">${l.locked ? '🔒' : '🔓'}</button>
         <button class="layer-btn danger" title="Delete" onclick="event.stopPropagation();TC.deleteLayer(${l.id})">✕</button>
       </div>
     </div>`).join('');
 }
-function startRename(id) { renamingId = id; renderLayersList(); setTimeout(() => { const i = document.getElementById('rename-input'); if (i) { i.focus(); i.select(); } }, 10); }
+function startRename(id) { renamingId = id; renderLayersList(true); setTimeout(() => { const i = document.getElementById('rename-input'); if (i) { i.focus(); i.select(); } }, 10); }
 function commitRename(id, val) { renamingId = null; if (val.trim()) TC.renameLayer(id, val.trim()); else renderLayersList(); }
 TC.on('change', renderLayersList);
 TC.on('select', renderLayersList);
@@ -348,6 +348,11 @@ TC.on('transformmode', updateTransformWidget);
 twLock.onclick = () => { const l = TC.getSelected(); if (l) { TC.toggleLock(l.id); renderPropsPanel(); } };
 twRotate.onclick = () => TC.setTransformMode('rotate');
 twResize.onclick = () => TC.setTransformMode('resize');
+const twDelete = document.getElementById('tw-delete');
+twDelete.onclick = () => {
+  const l = TC.getSelected(); if (!l) return;
+  showConfirm('Delete this element?', `This removes "${l.name}" from the canvas. This can't be undone.`, () => TC.deleteSelected());
+};
 twSlider.oninput = () => { twNum.value = twSlider.value; TC.applyTransformValue(+twSlider.value, { commit: false }); };
 twSlider.onchange = () => TC.applyTransformValue(+twSlider.value, { commit: true });
 twNum.addEventListener('input', () => { const v = parseFloat(twNum.value); if (!isNaN(v)) { const cfg = TC.getTransformSliderConfig(); twSlider.value = TC.util.clamp(v, cfg.min, cfg.max); TC.applyTransformValue(v, { commit: false }); } });
@@ -367,6 +372,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Delete' || e.key === 'Backspace') { if (TC.getSelected()) { TC.deleteSelected(); e.preventDefault(); } return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.shiftKey ? TC.redo() : TC.undo(); e.preventDefault(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { TC.redo(); e.preventDefault(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { const l = TC.getSelected(); if (l) TC.duplicateLayer(l.id); e.preventDefault(); return; }
   if (e.key === 'Escape') { TC.selectLayer(null); return; }
   if (e.key === 'F2') { const l = TC.getSelected(); if (l) startRename(l.id); e.preventDefault(); return; }
   const l = TC.getSelected();
@@ -432,3 +438,6 @@ function openInlineTextEditor(l) {
   textEditor = ta;
 }
 function closeInlineTextEditor() { if (textEditor) { textEditor.remove(); textEditor = null; } }
+// tapping/clicking anywhere outside the editor commits the text and closes it
+document.addEventListener('mousedown', e => { if (textEditor && !textEditor.contains(e.target)) textEditor.blur(); }, true);
+document.addEventListener('touchstart', e => { if (textEditor && !textEditor.contains(e.target)) textEditor.blur(); }, true);

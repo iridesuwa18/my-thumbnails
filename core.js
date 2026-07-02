@@ -453,6 +453,28 @@
     if (l) { l.locked = !l.locked; captureState(); syncAll(); emit('toast', { msg: l.locked ? '🔒 Layer locked' : '🔓 Layer unlocked', type: 'info' }); }
   }
   function renameLayer(id, name) { const l = layers.find(x => x.id === id); if (l) { l.name = name; captureState(); syncAll(); } }
+  function duplicateLayer(id) {
+    const l = layers.find(x => x.id === id);
+    if (!l) return;
+    const clone = JSON.parse(JSON.stringify(stripRuntime(l)));
+    clone.id = uid();
+    clone.name = (l.name || 'Layer') + ' copy';
+    const offset = 24;
+    clone.x = (clone.x || 0) + offset;
+    clone.y = (clone.y || 0) + offset;
+    if (clone.type === 'line') { clone.x2 = (clone.x2 || 0) + offset; clone.y2 = (clone.y2 || 0) + offset; }
+    const idx = layers.findIndex(x => x.id === id);
+    layers.splice(idx, 0, clone);
+    if (clone.type === 'image' && clone.src) {
+      const img = new Image();
+      img.onload = () => { clone.imgObj = img; render(); };
+      img.src = clone.src;
+    }
+    selectLayer(clone.id);
+    captureState(); syncAll();
+    emit('toast', { msg: `✓ Duplicated "${l.name}"`, type: 'success' });
+    return clone;
+  }
   function moveLayerUp(id) { const i = layers.findIndex(l => l.id === id); if (i > 0) { [layers[i - 1], layers[i]] = [layers[i], layers[i - 1]]; captureState(); syncAll(); } }
   function moveLayerDown(id) { const i = layers.findIndex(l => l.id === id); if (i < layers.length - 1 && i !== -1) { [layers[i + 1], layers[i]] = [layers[i], layers[i + 1]]; captureState(); syncAll(); } }
   function alignLayer(dir) {
@@ -819,7 +841,7 @@
     // layers
     addText, addRect, addEllipse, addTriangle, addLine, addImage,
     selectLayer, getSelected, getLayers, deleteLayer, deleteSelected,
-    toggleVisibility, toggleLock, renameLayer, moveLayerUp, moveLayerDown, alignLayer,
+    toggleVisibility, toggleLock, renameLayer, duplicateLayer, moveLayerUp, moveLayerDown, alignLayer,
     updateLayerProp, commitLayerProp,
     // background
     setBgProp, commitBgProp, loadBgImage, clearBgImage, getBg,

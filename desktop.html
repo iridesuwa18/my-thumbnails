@@ -64,8 +64,9 @@
             <div class="panel-label">Keyboard Shortcuts</div>
             <div style="font-size:11px;color:var(--muted);line-height:2">
               <span class="kb-hint">Del</span> delete &nbsp; <span class="kb-hint">Ctrl+Z</span> undo &nbsp; <span class="kb-hint">Ctrl+Y</span> redo<br>
+              <span class="kb-hint">Ctrl+D</span> duplicate &nbsp; <span class="kb-hint">F2</span> rename<br>
               <span class="kb-hint">↑↓←→</span> nudge &nbsp; <span class="kb-hint">Shift+→</span> ×10<br>
-              <span class="kb-hint">Space</span> pan &nbsp; <span class="kb-hint">F2</span> rename &nbsp; <span class="kb-hint">Esc</span> deselect
+              <span class="kb-hint">Space</span> pan &nbsp; <span class="kb-hint">Esc</span> deselect
             </div>
           </div>
         </div>
@@ -103,6 +104,8 @@
           <input type="range" id="tw-slider">
           <input type="text" class="tw-num" id="tw-num" inputmode="decimal">
         </div>
+        <div class="tw-sep"></div>
+        <button class="tw-icon" id="tw-delete" title="Delete element">🗑</button>
       </div>
       <div class="zoom-bar">
         <button class="zoom-btn" onclick="TC.zoomOut()" title="Zoom out">−</button>

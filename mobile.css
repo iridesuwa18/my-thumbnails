@@ -52,6 +52,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .tw-icon { width: 32px; height: 32px; border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--text2); font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tw-icon.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .tw-icon.locked { color: var(--danger); }
+#tw-delete:active { background: rgba(255,71,87,.18); color: var(--danger); }
 
 /* ── BOTTOM NAV ── */
 .mobile-nav { display: flex; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; z-index: 200; padding-bottom: env(safe-area-inset-bottom); }

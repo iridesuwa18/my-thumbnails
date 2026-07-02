@@ -107,27 +107,46 @@ function renderAddPanel() {
 // ── LAYERS LIST ───────────────────────────────────────────────
 const ICONS = { text: 'T', rect: '▭', ellipse: '◯', triangle: '△', line: '╱', image: '🖼' };
 let renamingId = null;
-function renderLayersList() {
+function renderLayersList(force) {
   const el = document.getElementById('drawer-elements-layers');
   const layers = TC.getLayers(), sel = TC.getSelected();
-  if (renamingId !== null && layers.some(l => l.id === renamingId)) return;
+  if (!force && renamingId !== null && layers.some(l => l.id === renamingId)) return;
   if (!layers.length) { el.innerHTML = `<div style="color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0;line-height:1.8">No layers yet.<br>Add elements from the <strong>Add</strong> tab.</div>`; return; }
-  el.innerHTML = `<div class="layers-list">` + layers.map(l => `
-    <div class="layer-item${sel && sel.id === l.id ? ' selected' : ''}" onclick="TC.selectLayer(${l.id});closeDrawer()">
+  el.innerHTML = `<div style="font-size:10px;color:var(--muted);margin-bottom:8px">Long-press a name to rename</div><div class="layers-list">` + layers.map(l => `
+    <div class="layer-item${sel && sel.id === l.id ? ' selected' : ''}" data-id="${l.id}" onclick="TC.selectLayer(${l.id});closeDrawer()">
       <span class="layer-icon" style="opacity:${l.visible ? 1 : .35}">${ICONS[l.type] || '◆'}</span>
       ${renamingId === l.id
-      ? `<input class="layer-name-edit" id="rename-input" value="${esc(l.name)}" onblur="commitRename(${l.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+      ? `<input class="layer-name-edit" id="rename-input" value="${esc(l.name)}" onblur="commitRename(${l.id},this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()">`
       : `<span class="layer-name" style="opacity:${l.visible ? 1 : .4}">${esc(l.name)}</span>`}
       <div class="layer-actions">
-        <button class="layer-btn" title="Rename" onclick="event.stopPropagation();startRename(${l.id})">✏️</button>
+        <button class="layer-btn" title="Duplicate" onclick="event.stopPropagation();TC.duplicateLayer(${l.id})">📋</button>
         <button class="layer-btn" title="Visibility" onclick="event.stopPropagation();TC.toggleVisibility(${l.id})">${l.visible ? '👁' : '🚫'}</button>
         <button class="layer-btn" title="Lock" onclick="event.stopPropagation();TC.toggleLock(${l.id})">${l.locked ? '🔒' : '🔓'}</button>
         <button class="layer-btn danger" title="Delete" onclick="event.stopPropagation();TC.deleteLayer(${l.id})">✕</button>
       </div>
     </div>`).join('') + `</div>`;
 }
-function startRename(id) { renamingId = id; renderLayersList(); setTimeout(() => { const i = document.getElementById('rename-input'); if (i) { i.focus(); i.select(); } }, 10); }
+function startRename(id) { renamingId = id; renderLayersList(true); setTimeout(() => { const i = document.getElementById('rename-input'); if (i) { i.focus(); i.select(); } }, 10); }
 function commitRename(id, val) { renamingId = null; if (val.trim()) TC.renameLayer(id, val.trim()); else renderLayersList(); }
+
+// long-press a layer name to rename it (mobile has no dblclick/F2 fallback)
+(function setupLongPressRename() {
+  const container = document.getElementById('drawer-elements-layers');
+  let lpTimer = null, lpFired = false;
+  container.addEventListener('touchstart', e => {
+    const nameEl = e.target.closest('.layer-name');
+    if (!nameEl) return;
+    const item = nameEl.closest('.layer-item');
+    lpFired = false;
+    lpTimer = setTimeout(() => { lpFired = true; startRename(+item.dataset.id); }, 500);
+  }, { passive: true });
+  container.addEventListener('touchmove', () => clearTimeout(lpTimer), { passive: true });
+  container.addEventListener('touchend', e => {
+    clearTimeout(lpTimer);
+    if (lpFired) { e.preventDefault(); e.stopPropagation(); }
+    lpFired = false;
+  });
+})();
 TC.on('change', () => { if (activeDrawer === 'elements' && activeDrawerTab === 'layers') renderLayersList(); });
 TC.on('select', () => { if (activeDrawer === 'elements' && activeDrawerTab === 'layers') renderLayersList(); if (activeDrawer === 'edit' && activeDrawerTab === 'props') renderPropsPanel(); });
 
@@ -325,6 +344,11 @@ TC.on('transformmode', updateTransformWidget);
 twLock.onclick = () => { const l = TC.getSelected(); if (l) { TC.toggleLock(l.id); if (activeDrawer === 'edit') renderPropsPanel(); } };
 twRotate.onclick = () => TC.setTransformMode('rotate');
 twResize.onclick = () => TC.setTransformMode('resize');
+const twDelete = document.getElementById('tw-delete');
+twDelete.onclick = () => {
+  const l = TC.getSelected(); if (!l) return;
+  showConfirm('Delete this element?', `This removes "${l.name}" from the canvas. This can't be undone.`, () => TC.deleteSelected());
+};
 twSlider.oninput = () => { twNum.value = twSlider.value; TC.applyTransformValue(+twSlider.value, { commit: false }); };
 twSlider.onchange = () => TC.applyTransformValue(+twSlider.value, { commit: true });
 twNum.addEventListener('input', () => { const v = parseFloat(twNum.value); if (!isNaN(v)) { const cfg = TC.getTransformSliderConfig(); twSlider.value = TC.util.clamp(v, cfg.min, cfg.max); TC.applyTransformValue(v, { commit: false }); } });
@@ -401,6 +425,9 @@ function openInlineTextEditor(l) {
   textEditor = ta;
 }
 function closeInlineTextEditor() { if (textEditor) { textEditor.remove(); textEditor = null; } }
+// tapping anywhere outside the editor commits the text and closes it
+document.addEventListener('touchstart', e => { if (textEditor && !textEditor.contains(e.target)) textEditor.blur(); }, true);
+document.addEventListener('mousedown', e => { if (textEditor && !textEditor.contains(e.target)) textEditor.blur(); }, true);
 
 // keyboard support for external keyboards / iPad
 document.addEventListener('keydown', e => {

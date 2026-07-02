@@ -129,6 +129,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .tw-icon:hover { background: var(--surface2); color: var(--text); }
 .tw-icon.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 .tw-icon.locked { color: var(--danger); }
+#tw-delete:hover { background: rgba(255,71,87,.14); color: var(--danger); }
 
 /* ── ZOOM BAR ── */
 .zoom-bar { position: absolute; bottom: 14px; right: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; gap: 2px; padding: 3px; z-index: 10; }
