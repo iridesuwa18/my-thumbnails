@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThumbCraft — Desktop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">THUMB<span>CRAFT</span><small>desktop</small></div>
+    <div class="topbar-sep"></div>
+    <div class="undo-redo">
+      <button class="btn btn-ghost" id="undo-btn" onclick="TC.undo()" title="Undo (Ctrl+Z)">↶</button>
+      <button class="btn btn-ghost" id="redo-btn" onclick="TC.redo()" title="Redo (Ctrl+Y)">↷</button>
+    </div>
+    <div class="topbar-sep"></div>
+    <button class="btn btn-ghost btn-sm" onclick="confirmNewCanvas()">✕ New</button>
+    <span class="autosave-dot" id="autosave-indicator"><span class="status-dot ok"></span>Saved</span>
+    <div class="topbar-right">
+      <span class="canvas-size-badge">1280 × 720</span>
+      <button class="btn btn-ghost" onclick="savePresetModal()">💾 Save Preset</button>
+      <button class="btn btn-primary" onclick="TC.exportPNG()">⬇ Export PNG</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-tab="add" onclick="switchLeftTab('add')">Add</div>
+        <div class="panel-tab" data-tab="layers" onclick="switchLeftTab('layers')">Layers</div>
+        <div class="panel-tab" data-tab="presets" onclick="switchLeftTab('presets')">Presets</div>
+      </div>
+      <div class="panel-body">
+
+        <div class="tab-content active" id="tab-add">
+          <div class="panel-section">
+            <div class="panel-label">Elements</div>
+            <div class="add-grid">
+              <div class="add-btn" onclick="TC.addText()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16M12 5v14"/></svg>Text</div>
+              <div class="add-btn" onclick="TC.addRect()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg>Rectangle</div>
+              <div class="add-btn" onclick="TC.addEllipse()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>Ellipse</div>
+              <div class="add-btn" onclick="TC.addTriangle()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5l8 14H4z"/></svg>Triangle</div>
+              <div class="add-btn" onclick="TC.addLine()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19L20 5"/></svg>Line</div>
+              <div class="add-btn" onclick="triggerImageUpload()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>Image</div>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-label">Align To Canvas</div>
+            <div class="align-bar">
+              <div class="align-btn" onclick="TC.alignLayer('left')" title="Align left"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2v12M5 5h9M5 8h6M5 11h9"/></svg></div>
+              <div class="align-btn" onclick="TC.alignLayer('center-h')" title="Center horizontal"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M3 5h10M4 8h8M3 11h10"/></svg></div>
+              <div class="align-btn" onclick="TC.alignLayer('right')" title="Align right"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2v12M2 5h9M5 8h6M2 11h9"/></svg></div>
+              <div class="align-btn" onclick="TC.alignLayer('top')" title="Align top"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12M5 5v9M8 5v6M11 5v9"/></svg></div>
+              <div class="align-btn" onclick="TC.alignLayer('center-v')" title="Center vertical"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M5 3v10M8 4v8M11 3v10"/></svg></div>
+              <div class="align-btn" onclick="TC.alignLayer('bottom')" title="Align bottom"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14h12M5 2v9M8 5v6M11 2v9"/></svg></div>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-label">Keyboard Shortcuts</div>
+            <div style="font-size:11px;color:var(--muted);line-height:2">
+              <span class="kb-hint">Del</span> delete &nbsp; <span class="kb-hint">Ctrl+Z</span> undo &nbsp; <span class="kb-hint">Ctrl+Y</span> redo<br>
+              <span class="kb-hint">↑↓←→</span> nudge &nbsp; <span class="kb-hint">Shift+→</span> ×10<br>
+              <span class="kb-hint">Space</span> pan &nbsp; <span class="kb-hint">F2</span> rename &nbsp; <span class="kb-hint">Esc</span> deselect
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-layers">
+          <div class="panel-label" style="margin-bottom:8px">
+            Layers <span id="layer-count" style="color:var(--accent);margin-left:4px"></span>
+            <button class="btn btn-ghost btn-sm" onclick="TC.deleteSelected()" id="del-selected-btn" style="display:none">🗑 Del</button>
+          </div>
+          <div class="layers-list" id="layers-list"></div>
+          <div id="no-layers" style="display:none;color:var(--muted);font-size:12px;text-align:center;padding:24px 0;line-height:1.8">No layers yet.<br>Add elements from the <strong>Add</strong> tab.</div>
+        </div>
+
+        <div class="tab-content" id="tab-presets">
+          <div class="panel-label">Saved Presets <span class="sync-badge" id="preset-sync-badge">local</span></div>
+          <div class="preset-grid" id="preset-grid"></div>
+          <div id="no-presets" style="display:none;color:var(--muted);font-size:11.5px;text-align:center;padding:24px 0;line-height:1.8">No presets yet.<br>Build a thumbnail and click <strong>Save Preset</strong>!</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CANVAS AREA -->
+    <div class="canvas-area" id="canvas-area">
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="mainCanvas" width="1280" height="720"></canvas>
+      </div>
+      <div class="transform-widget" id="transform-widget">
+        <button class="tw-icon" id="tw-lock" title="Lock element">🔓</button>
+        <div class="tw-sep"></div>
+        <button class="tw-icon" id="tw-rotate" title="Rotate mode">⟳</button>
+        <button class="tw-icon" id="tw-resize" title="Resize mode">⤢</button>
+        <div class="tw-sep"></div>
+        <div class="tw-slider-wrap">
+          <input type="range" id="tw-slider">
+          <input type="text" class="tw-num" id="tw-num" inputmode="decimal">
+        </div>
+      </div>
+      <div class="zoom-bar">
+        <button class="zoom-btn" onclick="TC.zoomOut()" title="Zoom out">−</button>
+        <span class="zoom-val" id="zoom-val" onclick="TC.zoomFit()" title="Click to fit">50%</span>
+        <button class="zoom-btn" onclick="TC.zoomIn()" title="Zoom in">+</button>
+        <button class="zoom-btn" onclick="TC.zoomFit()" title="Fit to screen">⊡</button>
+        <button class="zoom-btn" id="snap-btn" onclick="TC.toggleSnap()" title="Toggle snap">⊕</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-tab="props" onclick="switchRightTab('props')">Properties</div>
+        <div class="panel-tab" data-tab="bg" onclick="switchRightTab('bg')">Background</div>
+        <div class="panel-tab" data-tab="github" onclick="switchRightTab('github')">GitHub</div>
+      </div>
+
+      <div class="tab-content active" id="right-tab-props">
+        <div class="props-body" id="props-body"></div>
+      </div>
+
+      <div class="tab-content" id="right-tab-bg">
+        <div class="props-body" id="bg-body"></div>
+      </div>
+
+      <div class="tab-content" id="right-tab-github">
+        <div class="props-body" id="github-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- hidden inputs -->
+  <input type="file" id="bg-upload" accept="image/*" style="display:none">
+  <input type="file" id="img-upload" accept="image/*" style="display:none">
+
+  <!-- SAVE PRESET MODAL -->
+  <div class="modal-bg hidden" id="modal-preset">
+    <div class="modal">
+      <h3>Save Preset</h3>
+      <div class="prop-row">
+        <div class="prop-label">Preset Name</div>
+        <input class="prop-input" id="preset-name-input" placeholder="e.g. Gaming Thumbnail v1">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-preset')">Cancel</button>
+        <button class="btn btn-primary" onclick="doSavePreset()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
+  <div class="modal-bg hidden" id="modal-confirm">
+    <div class="confirm-dialog">
+      <h4 id="confirm-title">Are you sure?</h4>
+      <p id="confirm-msg"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="core.js"></script>
+  <script src="desktop.js"></script>
+</body>
+</html>

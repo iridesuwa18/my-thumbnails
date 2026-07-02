@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThumbCraft</title>
+<style>
+  :root { --bg:#0e0f14; --surface:#16181f; --accent:#f5c518; --accent2:#e84393; --text:#e8eaf0; --muted:#6b6f82; --border:#2a2d3a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--text); font-family: -apple-system, 'DM Sans', sans-serif; gap: 18px; }
+  .logo { font-family: 'Bebas Neue', Impact, sans-serif; font-size: 34px; letter-spacing: 3px; color: var(--accent); }
+  .logo span { color: var(--accent2); }
+  .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .links { display: flex; gap: 10px; margin-top: 4px; }
+  .links a { color: var(--text); background: var(--surface); border: 1px solid var(--border); padding: 8px 16px; border-radius: 7px; text-decoration: none; font-size: 13px; font-weight: 500; }
+  .links a:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="logo">THUMB<span>CRAFT</span></div>
+  <div class="spinner" id="spinner"></div>
+  <div class="muted" id="status">Detecting your device…</div>
+  <div class="links" id="links" style="display:none">
+    <a href="desktop.html">Desktop version</a>
+    <a href="mobile.html">Mobile version</a>
+  </div>
+
+  <noscript>
+    <div class="muted">JavaScript is off, so we can't auto-detect your device.</div>
+    <div class="links" style="display:flex">
+      <a href="desktop.html">Desktop version</a>
+      <a href="mobile.html">Mobile version</a>
+    </div>
+  </noscript>
+
+  <script>
+    function isMobileDevice() {
+      var ua = navigator.userAgent || '';
+      if (/Android|iPhone|iPod|Mobile|Windows Phone/i.test(ua)) return true;
+      // iPadOS 13+ reports as "Macintosh" but exposes multi-touch
+      if (/iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return true;
+      if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) return true;
+      return false;
+    }
+    var target = isMobileDevice() ? 'mobile.html' : 'desktop.html';
+    document.getElementById('status').textContent = 'Opening the ' + (target === 'mobile.html' ? 'mobile' : 'desktop') + ' version…';
+    setTimeout(function () {
+      window.location.replace(target);
+    }, 250);
+    setTimeout(function () {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('status').textContent = "Taking a while? Pick one:";
+      document.getElementById('links').style.display = 'flex';
+    }, 1800);
+  </script>
+</body>
+</html>

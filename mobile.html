@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ThumbCraft — Mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">THUMB<span>CRAFT</span></div>
+    <span class="autosave-dot"><span class="status-dot ok"></span>Saved</span>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-icon" id="undo-btn" onclick="TC.undo()" title="Undo">↶</button>
+      <button class="btn btn-ghost btn-icon" id="redo-btn" onclick="TC.redo()" title="Redo">↷</button>
+      <button class="btn btn-primary" onclick="TC.exportPNG()">⬇ Export</button>
+    </div>
+  </div>
+
+  <!-- QUICK ADD BAR -->
+  <div class="mobile-actions">
+    <button class="btn btn-ghost" onclick="TC.addText()">+ Text</button>
+    <button class="btn btn-ghost" onclick="TC.addRect()">+ Rect</button>
+    <button class="btn btn-ghost" onclick="TC.addEllipse()">+ Ellipse</button>
+    <button class="btn btn-ghost" onclick="TC.addTriangle()">+ Triangle</button>
+    <button class="btn btn-ghost" onclick="TC.addLine()">+ Line</button>
+    <button class="btn btn-ghost" onclick="triggerImageUpload()">+ Image</button>
+    <button class="btn btn-ghost" onclick="confirmNewCanvas()">✕ New</button>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvas-area">
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="mainCanvas" width="1280" height="720"></canvas>
+    </div>
+    <div class="transform-widget" id="transform-widget">
+      <button class="tw-icon" id="tw-lock" title="Lock">🔓</button>
+      <div class="tw-sep"></div>
+      <button class="tw-icon" id="tw-rotate" title="Rotate">⟳</button>
+      <button class="tw-icon" id="tw-resize" title="Resize">⤢</button>
+      <div class="tw-sep"></div>
+      <div class="tw-slider-wrap">
+        <input type="range" id="tw-slider">
+        <input type="text" class="tw-num" id="tw-num" inputmode="decimal">
+      </div>
+    </div>
+    <div class="zoom-bar">
+      <button class="zoom-btn" onclick="TC.zoomOut()">−</button>
+      <span class="zoom-val" id="zoom-val" onclick="TC.zoomFit()">50%</span>
+      <button class="zoom-btn" onclick="TC.zoomIn()">+</button>
+      <button class="zoom-btn" onclick="TC.zoomFit()">⊡</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="mobile-nav">
+    <button class="mobile-nav-btn" data-drawer="elements" onclick="openDrawer('elements')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Elements
+    </button>
+    <button class="mobile-nav-btn" data-drawer="edit" onclick="openDrawer('edit')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></svg>
+      Edit
+    </button>
+    <button class="mobile-nav-btn" data-drawer="presets" onclick="openDrawer('presets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
+      Presets
+    </button>
+    <button class="mobile-nav-btn" data-drawer="sync" onclick="openDrawer('sync')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>
+      Sync
+    </button>
+  </div>
+
+  <!-- DRAWER -->
+  <div class="drawer-backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-head">
+      <div class="drawer-title" id="drawer-title">Elements</div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-tabs" id="drawer-tabs"></div>
+    <div class="drawer-body">
+      <div class="drawer-content active" id="drawer-elements-add"></div>
+      <div class="drawer-content" id="drawer-elements-layers"></div>
+      <div class="drawer-content active" id="drawer-edit-props"></div>
+      <div class="drawer-content" id="drawer-edit-bg"></div>
+      <div class="drawer-content active" id="drawer-presets-list"></div>
+      <div class="drawer-content active" id="drawer-sync-github"></div>
+    </div>
+  </div>
+
+  <!-- hidden inputs -->
+  <input type="file" id="bg-upload" accept="image/*" style="display:none">
+  <input type="file" id="img-upload" accept="image/*" style="display:none">
+
+  <!-- SAVE PRESET MODAL -->
+  <div class="modal-bg hidden" id="modal-preset">
+    <div class="modal">
+      <h3>Save Preset</h3>
+      <div class="prop-row"><div class="prop-label">Preset Name</div><input class="prop-input" id="preset-name-input" placeholder="e.g. Gaming Thumbnail v1"></div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('modal-preset')">Cancel</button><button class="btn btn-primary" onclick="doSavePreset()">Save</button></div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
+  <div class="modal-bg hidden" id="modal-confirm">
+    <div class="confirm-dialog">
+      <h4 id="confirm-title">Are you sure?</h4>
+      <p id="confirm-msg"></p>
+      <div class="confirm-actions"><button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancel</button><button class="btn btn-danger" id="confirm-ok-btn">Confirm</button></div>
+    </div>
+  </div>
+
+  <!-- floating save-preset shortcut -->
+  <button class="btn btn-ghost btn-icon" onclick="savePresetModal()" title="Save Preset" style="position:fixed;right:10px;bottom:64px;z-index:150;background:var(--surface);border:1px solid var(--border);border-radius:50%;width:38px;height:38px;">💾</button>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="core.js"></script>
+  <script src="mobile.js"></script>
+</body>
+</html>
