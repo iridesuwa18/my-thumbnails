@@ -167,7 +167,7 @@
       const raw = localStorage.getItem('tc_project_v2');
       if (raw) { loadProjectData(JSON.parse(raw), { keepHistory: true }); }
       const p = localStorage.getItem('tc_presets_v2');
-      if (p) presets = JSON.parse(p);
+      if (p) presets = JSON.parse(p).map(normalizePresetShape);
       else {
         // migrate from the old pre-rewrite localStorage keys if present
         const legacyPresets = localStorage.getItem('tc_presets');
@@ -668,6 +668,28 @@
   }
 
   // ── PRESETS (local list; GitHub is the durable per-file store) ─
+  // Older presets (pre-rewrite) stored bg fields flat (bgColor, bgZoom, ...)
+  // and `layers` at the top level, instead of nesting everything under
+  // `data: { bg, layers, canvas }`. Normalize any preset shaped like that
+  // so it can still be loaded, instead of loadProjectData throwing on a
+  // missing `data` object.
+  const LEGACY_BG_KEY_MAP = {
+    bgColor: 'color', bgImageSrc: 'imageSrc', bgImageName: 'imageName',
+    bgOverlayColor: 'overlayColor', bgOverlayOpacity: 'overlayOpacity',
+    bgZoom: 'zoom', bgOffsetX: 'offsetX', bgOffsetY: 'offsetY', bgRotation: 'rotation',
+    bgBlur: 'blur', bgBrightness: 'brightness', bgContrast: 'contrast', bgSaturate: 'saturate'
+  };
+  function normalizePresetShape(p) {
+    if (!p || p.data) return p; // already new-format (or nothing to fix)
+    const bg = {};
+    for (const [oldKey, newKey] of Object.entries(LEGACY_BG_KEY_MAP)) {
+      if (p[oldKey] !== undefined) bg[newKey] = p[oldKey];
+    }
+    return {
+      ...p,
+      data: { bg, layers: p.layers || [], canvas: p.canvas || { w: W, h: H } }
+    };
+  }
   function savePresetNew(name) {
     const preset = { id: 'p' + Date.now() + Math.random().toString(36).slice(2, 7), name, data: serializeProject(), thumb: generateThumb(), updatedAt: Date.now() };
     presets.unshift(preset);
@@ -706,9 +728,17 @@
     }
   }
   function loadPreset(id) {
-    const p = presets.find(x => x.id === id); if (!p) return;
-    loadProjectData(p.data);
-    emit('toast', { msg: `Loaded "${p.name}"`, type: 'success' });
+    const idx = presets.findIndex(x => x.id === id); if (idx === -1) return;
+    const fixed = normalizePresetShape(presets[idx]);
+    if (fixed !== presets[idx]) {
+      // self-heal: this preset was still in the old flat format — persist
+      // the migrated shape so it doesn't need re-fixing on every click
+      presets[idx] = fixed;
+      localStorage.setItem('tc_presets_v2', JSON.stringify(presets));
+      if (ghConnected()) gh.savePresetFile(fixed);
+    }
+    loadProjectData(fixed.data);
+    emit('toast', { msg: `Loaded "${fixed.name}"`, type: 'success' });
   }
   function deletePresetLocal(id) {
     const p = presets.find(x => x.id === id);
@@ -778,7 +808,7 @@
         const r = await fetch(f.url, { headers: ghHeaders() });
         const json = await r.json();
         const content = JSON.parse(b64decode(json.content));
-        loaded.push({ ...content, _sha: json.sha, _path: f.path, _slug: f.name.replace(/\.json$/, '') });
+        loaded.push(normalizePresetShape({ ...content, _sha: json.sha, _path: f.path, _slug: f.name.replace(/\.json$/, '') }));
       } catch (e) { console.error('failed to load preset file', f.name, e); }
     }
     loaded.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
