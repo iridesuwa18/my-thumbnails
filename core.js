@@ -24,6 +24,11 @@
     blur: 0, brightness: 100, contrast: 100, saturate: 100
   };
   let bgImageObj = null;
+  // Bumped every time a new bg-image load starts (preset load, manual upload,
+  // or clear). Each in-flight Image.onload checks its own captured token
+  // against this before applying — so a slow-loading image from a preset you
+  // switched away from can no longer overwrite the one you switched to.
+  let bgLoadToken = 0;
 
   let zoomLevel = 0.5, panX = 0, panY = 0;
   let isPanning = false, spaceDown = false;
@@ -120,10 +125,11 @@
   }
   function loadProjectData(data, opts) {
     opts = opts || {};
+    const token = ++bgLoadToken;
     bg = { ...bg, ...(data.bg || {}) };
     if (bg.imageSrc) {
       const img = new Image();
-      img.onload = () => { bgImageObj = img; render(); };
+      img.onload = () => { if (token !== bgLoadToken) return; bgImageObj = img; render(); };
       img.src = bg.imageSrc;
     } else { bgImageObj = null; }
     layers = (data.layers || []).map(l => {
@@ -516,13 +522,15 @@
     const reader = new FileReader();
     reader.onload = e => {
       bg.imageSrc = e.target.result; bg.imageName = file.name;
+      const token = ++bgLoadToken;
       const img = new Image();
-      img.onload = () => { bgImageObj = img; render(); captureState(); scheduleAutosave(); emit('bgchange'); };
+      img.onload = () => { if (token !== bgLoadToken) return; bgImageObj = img; render(); captureState(); scheduleAutosave(); emit('bgchange'); };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   }
   function clearBgImage() {
+    bgLoadToken++; // invalidate any bg image load still in flight
     bgImageObj = null; bg.imageSrc = ''; bg.imageName = '';
     render(); captureState(); scheduleAutosave(); emit('bgchange');
     emit('toast', { msg: 'BG image removed', type: 'info' });
