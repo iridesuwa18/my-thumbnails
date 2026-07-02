@@ -301,6 +301,7 @@ function renderGithubPanel() {
       <button class="btn btn-primary" style="justify-content:center" onclick="doGhSaveAll()">⬆ Save All</button>
     </div>
     <div style="font-size:10.5px;color:var(--muted);margin-bottom:12px;text-align:center">Load All replaces the local preset list · Save All pushes every local preset as its own file</div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:8px" onclick="doGhRenameToNames()">🏷️ Rename Files to Match Preset Names</button>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="TC.gh.disconnect();renderGithubPanel();renderPresetsGrid()">🔓 Change Credentials</button>`;
 }
 async function doGhConnect() {
@@ -314,6 +315,7 @@ async function doGhConnect() {
 }
 async function doGhLoad() { showToast('Loading from GitHub…', 'info'); try { await TC.gh.loadAll(); renderGithubPanel(); } catch (e) { showToast(e.message, 'error'); } }
 async function doGhSaveAll() { showToast('Saving to GitHub…', 'info'); try { await TC.gh.saveAll(); renderGithubPanel(); } catch (e) { showToast(e.message, 'error'); } }
+async function doGhRenameToNames() { showToast('Renaming preset files…', 'info'); try { await TC.gh.renameToNames(); renderGithubPanel(); } catch (e) { showToast(e.message, 'error'); } }
 
 // ── FLOATING TRANSFORM WIDGET ───────────────────────────────────
 const twEl = document.getElementById('transform-widget');

@@ -678,10 +678,24 @@
   }
   function renamePreset(id, name) {
     const p = presets.find(x => x.id === id); if (!p) return;
+    const before = { ...p }; // snapshot with old name/_path/_sha/_slug, for locating the old file
     p.name = name; p.updatedAt = Date.now();
     localStorage.setItem('tc_presets_v2', JSON.stringify(presets));
     emit('presets');
-    if (ghConnected()) gh.savePresetFile(p);
+    if (ghConnected()) {
+      const oldPath = before._path || presetFilePath(before);
+      const newPath = presetFilePath(p);
+      if (oldPath !== newPath) {
+        // Name changed enough to change the filename: delete the old file
+        // and save a fresh one under the new name so GitHub stays in sync.
+        gh.deletePresetFile(before).then(() => {
+          p._sha = null; p._path = null;
+          gh.savePresetFile(p);
+        });
+      } else {
+        gh.savePresetFile(p);
+      }
+    }
   }
   function loadPreset(id) {
     const p = presets.find(x => x.id === id); if (!p) return;
@@ -756,7 +770,7 @@
         const r = await fetch(f.url, { headers: ghHeaders() });
         const json = await r.json();
         const content = JSON.parse(b64decode(json.content));
-        loaded.push({ ...content, _sha: json.sha, _path: f.path });
+        loaded.push({ ...content, _sha: json.sha, _path: f.path, _slug: f.name.replace(/\.json$/, '') });
       } catch (e) { console.error('failed to load preset file', f.name, e); }
     }
     loaded.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -785,7 +799,24 @@
     emit('toast', { msg: `✓ Migrated ${presets.length} preset(s) to ${ghConfig.folder}/`, type: 'success' });
   }
 
-  function presetFilePath(p) { return `${ghConfig.folder}/${p.id}.json`; }
+  function slugify(str) {
+    return (str || '').toString().trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'preset';
+  }
+  // Computes a filename slug for a preset, appending -2, -3, ... if another
+  // preset already resolves to the same slug (so files never collide).
+  function uniqueFileSlug(p) {
+    const base = slugify(p.name);
+    let slug = base, n = 2;
+    while (presets.some(x => x.id !== p.id && (x._slug || slugify(x.name)) === slug)) {
+      slug = `${base}-${n++}`;
+    }
+    p._slug = slug;
+    return slug;
+  }
+  function presetFilePath(p) { return `${ghConfig.folder}/${uniqueFileSlug(p)}.json`; }
 
   async function ghGetFileSha(path) {
     try {
@@ -801,7 +832,7 @@
     try {
       const path = presetFilePath(p);
       const sha = p._sha || await ghGetFileSha(path);
-      const { _sha, _path, ...clean } = p;
+      const { _sha, _path, _slug, ...clean } = p;
       const body = { message: `ThumbCraft: save preset "${p.name}"`, content: b64encode(JSON.stringify(clean, null, 2)) };
       if (sha) body.sha = sha;
       const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${path}`;
@@ -828,10 +859,37 @@
     emit('toast', { msg: `✓ Saved ${presets.length} preset(s) to GitHub`, type: 'success' });
   }
 
+  // One-time cleanup: renames any preset files still sitting under their old
+  // random-id names (e.g. p1719...xy.json) to name-based slugs. Safe to run
+  // repeatedly — presets already on the new scheme are skipped.
+  async function ghRenameToNames() {
+    if (!ghConnected()) throw new Error('Configure GitHub first');
+    let renamed = 0;
+    for (const p of presets) {
+      const oldPath = p._path;
+      const newPath = presetFilePath(p);
+      if (oldPath && oldPath !== newPath) {
+        const oldSha = p._sha;
+        try {
+          await fetch(`https://api.github.com/repos/${ghConfig.repo}/contents/${oldPath}`, {
+            method: 'DELETE', headers: ghHeaders(),
+            body: JSON.stringify({ message: `ThumbCraft: rename preset file for "${p.name}"`, sha: oldSha })
+          });
+          p._sha = null; p._path = null;
+          await ghSavePresetFile(p);
+          renamed++;
+        } catch (e) { console.error('rename failed for', p.name, e); }
+      }
+    }
+    emit('toast', { msg: renamed ? `✓ Renamed ${renamed} preset file(s) to match names` : 'All preset files already match their names', type: 'success' });
+    return renamed;
+  }
+
   const gh = {
     connect: ghTestAndConnect, disconnect: ghDisconnect, connected: ghConnected,
     loadAll: ghLoadAll, saveAll: ghSaveAllPresets,
     savePresetFile: ghSavePresetFile, deletePresetFile: ghDeletePresetFile,
+    renameToNames: ghRenameToNames,
     getConfig: getGhConfig
   };
 
