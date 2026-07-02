@@ -321,6 +321,21 @@ async function doGhRenameToNames() { showToast('Renaming preset files…', 'info
 const twEl = document.getElementById('transform-widget');
 const twLock = document.getElementById('tw-lock'), twRotate = document.getElementById('tw-rotate'), twResize = document.getElementById('tw-resize');
 const twSlider = document.getElementById('tw-slider'), twNum = document.getElementById('tw-num');
+const EDGE_PAD = 8;
+// Freeze the widget's screen position while the slider/number field is being
+// dragged. Otherwise a live resize/rotate drag moves the widget (its anchor
+// tracks the shape) out from under the pointer mid-drag, and a native
+// <input type=range> reinterprets the same pointer position as a wildly
+// different value — the "spazzing" behavior.
+let twInteracting = false;
+function setTwInteracting(v) { twInteracting = v; if (!v) updateTransformWidget(); }
+['pointerdown', 'mousedown'].forEach(evt => {
+  twSlider.addEventListener(evt, () => setTwInteracting(true));
+  twNum.addEventListener(evt, () => setTwInteracting(true));
+});
+['pointerup', 'pointercancel', 'mouseup'].forEach(evt => {
+  window.addEventListener(evt, () => { if (twInteracting) setTwInteracting(false); });
+});
 
 function updateTransformWidget() {
   const l = TC.getSelected();
@@ -328,8 +343,20 @@ function updateTransformWidget() {
   const anchor = TC.getWidgetAnchorScreen();
   if (!anchor) { twEl.classList.remove('show'); return; }
   twEl.classList.add('show');
-  twEl.style.left = anchor.x + 'px';
-  twEl.style.top = anchor.y + 'px';
+  if (!twInteracting) {
+    // .transform-widget is translate(-50%,-100%): `left` is its horizontal
+    // center, `top` is its bottom edge. Clamp using the widget's *actual*
+    // measured size so it can't render partially off-screen near an edge.
+    const rect = twEl.getBoundingClientRect();
+    const halfW = (rect.width || 300) / 2;
+    const h = rect.height || 50;
+    const minCenterX = Math.min(halfW + EDGE_PAD, window.innerWidth / 2);
+    const maxCenterX = Math.max(window.innerWidth - halfW - EDGE_PAD, minCenterX);
+    twEl.style.left = TC.util.clamp(anchor.x, minCenterX, maxCenterX) + 'px';
+    const minTop = Math.min(h + EDGE_PAD, window.innerHeight);
+    const maxTop = Math.max(window.innerHeight - EDGE_PAD, minTop);
+    twEl.style.top = TC.util.clamp(anchor.y, minTop, maxTop) + 'px';
+  }
   twLock.textContent = l.locked ? '🔒' : '🔓';
   twLock.classList.toggle('locked', !!l.locked);
   const mode = TC.getTransformMode();
@@ -346,6 +373,7 @@ function updateTransformWidget() {
 TC.on('rendered', updateTransformWidget);
 TC.on('zoom', updateTransformWidget);
 TC.on('transformmode', updateTransformWidget);
+window.addEventListener('resize', updateTransformWidget);
 
 twLock.onclick = () => { const l = TC.getSelected(); if (l) { TC.toggleLock(l.id); renderPropsPanel(); } };
 twRotate.onclick = () => TC.setTransformMode('rotate');

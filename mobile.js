@@ -322,14 +322,42 @@ async function doGhRenameToNames() { showToast('Renaming preset files…', 'info
 const twEl = document.getElementById('transform-widget');
 const twLock = document.getElementById('tw-lock'), twRotate = document.getElementById('tw-rotate'), twResize = document.getElementById('tw-resize');
 const twSlider = document.getElementById('tw-slider'), twNum = document.getElementById('tw-num');
+const EDGE_PAD = 8;
+// While the user has a finger on the slider/number field, the widget's
+// screen position is frozen. Otherwise, live resize/rotate drags would move
+// the widget (its anchor tracks the shape) out from under the touch mid-drag,
+// which makes a native <input type=range> reinterpret the same finger
+// position as a wildly different value — the "spazzing" behavior.
+let twInteracting = false;
+function setTwInteracting(v) { twInteracting = v; if (!v) updateTransformWidget(); }
+['pointerdown', 'touchstart', 'mousedown'].forEach(evt => {
+  twSlider.addEventListener(evt, () => setTwInteracting(true), { passive: true });
+  twNum.addEventListener(evt, () => setTwInteracting(true), { passive: true });
+});
+['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'mouseup'].forEach(evt => {
+  window.addEventListener(evt, () => { if (twInteracting) setTwInteracting(false); });
+});
 function updateTransformWidget() {
   const l = TC.getSelected();
   if (!l) { twEl.classList.remove('show'); return; }
   const anchor = TC.getWidgetAnchorScreen();
   if (!anchor) { twEl.classList.remove('show'); return; }
   twEl.classList.add('show');
-  twEl.style.left = TC.util.clamp(anchor.x, 90, window.innerWidth - 90) + 'px';
-  twEl.style.top = Math.max(anchor.y, 60) + 'px';
+  if (!twInteracting) {
+    // .transform-widget is translate(-50%,-100%): `left` is its horizontal
+    // center, `top` is its bottom edge. Clamp using the widget's *actual*
+    // measured size so it can never render partially off-screen, however
+    // close the shape is to a screen edge.
+    const rect = twEl.getBoundingClientRect();
+    const halfW = (rect.width || 300) / 2;
+    const h = rect.height || 50;
+    const minCenterX = Math.min(halfW + EDGE_PAD, window.innerWidth / 2);
+    const maxCenterX = Math.max(window.innerWidth - halfW - EDGE_PAD, minCenterX);
+    twEl.style.left = TC.util.clamp(anchor.x, minCenterX, maxCenterX) + 'px';
+    const minTop = Math.min(h + EDGE_PAD, window.innerHeight);
+    const maxTop = Math.max(window.innerHeight - EDGE_PAD, minTop);
+    twEl.style.top = TC.util.clamp(anchor.y, minTop, maxTop) + 'px';
+  }
   twLock.textContent = l.locked ? '🔒' : '🔓';
   twLock.classList.toggle('locked', !!l.locked);
   const mode = TC.getTransformMode();
@@ -343,6 +371,7 @@ function updateTransformWidget() {
 TC.on('rendered', updateTransformWidget);
 TC.on('zoom', updateTransformWidget);
 TC.on('transformmode', updateTransformWidget);
+window.addEventListener('resize', updateTransformWidget);
 twLock.onclick = () => { const l = TC.getSelected(); if (l) { TC.toggleLock(l.id); if (activeDrawer === 'edit') renderPropsPanel(); } };
 twRotate.onclick = () => TC.setTransformMode('rotate');
 twResize.onclick = () => TC.setTransformMode('resize');
@@ -414,9 +443,17 @@ function openInlineTextEditor(l) {
   const topLeft = TC.canvasToScreen({ x: b.x, y: b.y });
   const ta = document.createElement('textarea');
   ta.value = l.text || '';
+  const pad = 6;
+  const width = Math.min(b.w * TC.getZoom() + 20, window.innerWidth - pad * 2);
+  const height = b.h * TC.getZoom() + 10;
+  // Clamp against all four edges (previously only the left edge was
+  // guarded), so the editor can't render partially off-screen for text
+  // layers positioned near the right or bottom of the canvas.
+  const left = TC.util.clamp(topLeft.x, pad, Math.max(pad, window.innerWidth - width - pad));
+  const top = TC.util.clamp(topLeft.y, pad, Math.max(pad, window.innerHeight - height - pad));
   Object.assign(ta.style, {
-    position: 'fixed', left: Math.max(6, topLeft.x) + 'px', top: topLeft.y + 'px',
-    minWidth: Math.min(b.w * TC.getZoom() + 20, window.innerWidth - 20) + 'px', minHeight: (b.h * TC.getZoom() + 10) + 'px',
+    position: 'fixed', left: left + 'px', top: top + 'px',
+    minWidth: width + 'px', minHeight: height + 'px',
     font: `${Math.max(12, l.fontSize * TC.getZoom())}px "${l.fontFamily || 'Bebas Neue'}"`, color: l.color || '#fff',
     background: 'rgba(20,20,28,.95)', border: '1px dashed var(--accent)', borderRadius: '4px', padding: '4px', zIndex: 600, outline: 'none'
   });
